@@ -59,7 +59,7 @@ describe('ViveSong app', () => {
 
     await user.click(screen.getByLabelText('Cerrar editor'));
     await user.click(screen.getByRole('button', { name: 'Descartar' }));
-    expect(screen.getByRole('heading', { name: /Selecciona una cancion/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Cancionero compartido/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Cancion temporal/i })).not.toBeInTheDocument();
   });
 
@@ -135,7 +135,7 @@ describe('ViveSong app', () => {
     expect(screen.getByRole('heading', { name: /Luz en mi camino Version 2/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /Archivar/i }));
-    expect(screen.getByRole('heading', { name: /Selecciona una cancion/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Cancionero compartido/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Luz en mi camino Version 2/i })).not.toBeInTheDocument();
   });
 
@@ -212,7 +212,7 @@ describe('ViveSong app', () => {
 
     await user.click(screen.getByLabelText('Eliminar cancion'));
     await user.click(screen.getByRole('button', { name: 'Eliminar' }));
-    expect(screen.getByRole('heading', { name: /Selecciona una cancion/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Cancionero compartido/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Luz en mi camino/i })).not.toBeInTheDocument();
   });
 });

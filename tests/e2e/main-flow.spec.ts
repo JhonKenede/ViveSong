@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('main worship workflow', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /Selecciona una cancion/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Cancionero compartido/i })).toBeVisible();
 
   await page.getByLabel('Buscar canciones').fill('roca');
   await expect(page.getByRole('button', { name: /Firme roca/i })).toBeVisible();

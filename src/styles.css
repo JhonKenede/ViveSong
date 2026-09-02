@@ -273,6 +273,17 @@ nav {
   padding-top: 20px;
 }
 
+.sidebar-link-button {
+  background: transparent;
+  border: 0;
+  color: #dbe8e1;
+  font-weight: 700;
+  min-height: 32px;
+  padding: 0;
+  text-align: left;
+  width: fit-content;
+}
+
 .role-switcher {
   color: #cdd8d3;
   font-size: 0.86rem;
@@ -523,6 +534,91 @@ h3 {
 .empty-state {
   color: #65736e;
   padding: 18px;
+}
+
+.page-status {
+  background: #edf7f1;
+  border: 1px solid #cfe5d8;
+  border-radius: 8px;
+  color: #23553f;
+  padding: 12px 14px;
+}
+
+.groups-layout {
+  align-items: stretch;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.group-form-panel {
+  align-content: start;
+}
+
+.group-form-panel .primary-button,
+.group-form-panel .secondary-button,
+.group-form-panel .danger-button {
+  width: fit-content;
+}
+
+.group-code-box {
+  background: #f7faf8;
+  border: 1px solid #dbe2de;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+}
+
+.group-code-box span,
+.group-card span {
+  color: #65736e;
+  font-size: 0.86rem;
+}
+
+.group-code-box strong,
+.group-card code {
+  color: #12392a;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 1rem;
+}
+
+.group-list-section {
+  display: grid;
+  gap: 14px;
+}
+
+.group-card-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.group-card {
+  background: #ffffff;
+  border: 1px solid #dbe2de;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.group-card.is-active {
+  border-color: #7fc7a4;
+  box-shadow: inset 0 0 0 1px #7fc7a4;
+}
+
+.group-card strong,
+.group-card span {
+  display: block;
+}
+
+.group-card code {
+  background: #edf7f1;
+  border: 1px solid #cfe5d8;
+  border-radius: 8px;
+  padding: 9px 10px;
+  width: fit-content;
 }
 
 .toolbar {
@@ -1301,7 +1397,8 @@ label {
   .setlist-layout,
   .editor-grid,
   .metadata-grid,
-  .setlist-builder {
+  .setlist-builder,
+  .groups-layout {
     grid-template-columns: 1fr;
   }
 
@@ -1422,7 +1519,7 @@ label {
   nav {
     display: grid;
     gap: 6px;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     overflow: visible;
   }
 
@@ -1442,7 +1539,7 @@ label {
 
   .nav-button {
     flex-direction: column;
-    font-size: 0.74rem;
+    font-size: 0.68rem;
     gap: 4px;
     justify-content: center;
     min-height: 44px;
@@ -1462,6 +1559,13 @@ label {
 
   .mobile-group-actions {
     grid-template-columns: 1fr;
+  }
+
+  .group-form-panel .primary-button,
+  .group-form-panel .secondary-button,
+  .group-form-panel .danger-button,
+  .group-card .secondary-button {
+    width: 100%;
   }
 
   .song-detail {

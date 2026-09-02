@@ -18,6 +18,7 @@ import {
   Search,
   Trash2,
   Upload,
+  UsersRound,
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -78,6 +79,7 @@ const navItems: Array<{ view: Exclude<ViewMode, 'song'>; label: string; icon: ty
   { view: 'editor', label: 'Editor', icon: Music2 },
   { view: 'setlists', label: 'Repertorios', icon: ListMusic },
   { view: 'performance', label: 'Directo', icon: Mic2 },
+  { view: 'groups', label: 'Grupos', icon: UsersRound },
 ];
 
 const musicalKeys = CHROMATIC_KEYS;
@@ -229,6 +231,16 @@ function App() {
       setActiveView('library');
     } catch (error) {
       setSyncMessage(getFriendlyBackendError(error));
+    }
+  }
+
+  async function copyInviteCode(code: string) {
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      setSyncMessage('Codigo del grupo copiado.');
+    } catch {
+      setSyncMessage('No se pudo copiar el codigo. Seleccionalo y copialo manualmente.');
     }
   }
 
@@ -785,24 +797,6 @@ function App() {
             );
           })}
         </nav>
-        {syncMode === 'supabase' && workspaces.length > 0 ? (
-          <section className="group-nav" aria-label="Grupos compartidos">
-            <span>Grupos</span>
-            <div>
-              {workspaces.map((workspace) => (
-                <button
-                  className={workspace.groupId === session.groupId ? 'group-nav-button is-active' : 'group-nav-button'}
-                  key={workspace.groupId}
-                  type="button"
-                  onClick={() => void switchWorkspace(workspace)}
-                >
-                  <strong>{workspace.name}</strong>
-                  <small>{roleLabel(workspace.role)}</small>
-                </button>
-              ))}
-            </div>
-          </section>
-        ) : null}
         {syncMode === 'supabase' ? null : (
           <label className="role-switcher">
             Rol local
@@ -819,140 +813,25 @@ function App() {
             </select>
           </label>
         )}
-        <section className="sync-panel sync-panel--desktop" aria-label="Conexion de grupo">
-          <div>
-            <strong>{syncMode === 'supabase' ? activeWorkspace?.name ?? 'Sin grupo activo' : 'Modo local'}</strong>
-            <span>{syncMode === 'supabase' ? `Rol: ${roleLabel(session.role)}` : syncMessage || 'Datos guardados en este equipo.'}</span>
-          </div>
-          {syncMode === 'supabase' && syncMessage ? <p className="sync-status">{syncMessage}</p> : null}
-          {isSupabaseConfigured ? (
-            syncMode === 'supabase' ? (
-              <>
-                <label>
-                  Codigo del grupo
-                  <input readOnly value={inviteCode} />
-                </label>
-                <label>
-                  Crear grupo
-                  <input
-                    autoComplete="off"
-                    maxLength={80}
-                    value={newGroupName}
-                    onChange={(event) => setNewGroupName(event.target.value)}
-                    placeholder="Nombre del grupo"
-                  />
-                </label>
-                <button className="secondary-button" type="button" onClick={() => void handleCreateWorkspace()}>
-                  <Plus size={16} /> Crear grupo
-                </button>
-                <label>
-                  Unirme a otro grupo
-                  <input
-                    autoComplete="off"
-                    value={joinGroupCode}
-                    onChange={(event) => setJoinGroupCode(event.target.value)}
-                    placeholder="Codigo del admin"
-                  />
-                </label>
-                <button className="secondary-button" type="button" onClick={() => void handleJoinWorkspace()}>
-                  Unirme
-                </button>
-                <button className="secondary-button" type="button" onClick={() => void loadRemoteWorkspace()}>
-                  Actualizar
-                </button>
-                {activeWorkspace?.role === 'admin' ? (
-                  <button className="danger-button" type="button" onClick={() => setGroupPendingDelete(activeWorkspace)}>
-                    <Trash2 size={16} /> Eliminar grupo
-                  </button>
-                ) : null}
-                <button className="secondary-button" type="button" onClick={() => void handleSignOut()}>
-                  Salir
-                </button>
-              </>
-            ) : null
-          ) : (
-            <span>Configura `.env.local` para conectar Supabase.</span>
-          )}
-        </section>
-        {syncMode === 'supabase' ? (
-          <details className="sync-panel sync-panel--mobile" aria-label="Conexion de grupo movil">
-            <summary className="mobile-group-summary">
-              <span>
-                <strong>{activeWorkspace?.name ?? 'Sin grupo activo'}</strong>
-                <small>{roleLabel(session.role)}</small>
-              </span>
-              <code translate="no">{inviteCode}</code>
-            </summary>
-            <div className="mobile-group-body">
-              {syncMessage ? <p className="sync-status">{syncMessage}</p> : null}
-              <label>
-                Crear grupo
-                <input
-                  autoComplete="off"
-                  maxLength={80}
-                  value={newGroupName}
-                  onChange={(event) => setNewGroupName(event.target.value)}
-                  placeholder="Nombre del grupo"
-                />
-              </label>
-              <button className="secondary-button" type="button" onClick={() => void handleCreateWorkspace()}>
-                <Plus size={16} /> Crear grupo
-              </button>
-              <label>
-                Unirme a otro grupo
-                <input
-                  autoComplete="off"
-                  value={joinGroupCode}
-                  onChange={(event) => setJoinGroupCode(event.target.value)}
-                  placeholder="Codigo del admin"
-                />
-              </label>
-              <div className="mobile-group-actions">
-                <button className="secondary-button" type="button" onClick={() => void handleJoinWorkspace()}>
-                  Unirme
-                </button>
-                <button className="secondary-button" type="button" onClick={() => void loadRemoteWorkspace()}>
-                  Actualizar
-                </button>
-                {activeWorkspace?.role === 'admin' ? (
-                  <button className="danger-button" type="button" onClick={() => setGroupPendingDelete(activeWorkspace)}>
-                    <Trash2 size={16} /> Eliminar grupo
-                  </button>
-                ) : null}
-                <button className="secondary-button" type="button" onClick={() => void handleSignOut()}>
-                  Salir
-                </button>
-              </div>
-            </div>
-          </details>
-        ) : null}
         <div className="sidebar-summary">
+          {syncMode === 'supabase' ? <span>{activeWorkspace?.name ?? 'Sin grupo activo'}</span> : null}
           <span>{visibleSongs.length} canciones</span>
           <span>{visibleSetlists.length} repertorios</span>
+          {syncMode === 'supabase' ? (
+            <button className="sidebar-link-button" type="button" onClick={() => void handleSignOut()}>
+              Salir
+            </button>
+          ) : null}
         </div>
       </aside>
 
       <main>
-        {syncMode === 'supabase' && workspaces.length > 0 ? (
-          <div className="workspace-tabs" aria-label="Grupos">
-            {workspaces.map((workspace) => (
-              <button
-                className={workspace.groupId === session.groupId ? 'workspace-tab is-active' : 'workspace-tab'}
-                key={workspace.groupId}
-                type="button"
-                onClick={() => void switchWorkspace(workspace)}
-              >
-                {workspace.name}
-              </button>
-            ))}
-          </div>
-        ) : null}
         {activeView === 'library' ? (
           <section className="workspace">
             <div className="workspace-header">
               <div>
-                <p className="eyebrow">{activeWorkspace?.name ?? 'Biblioteca'}</p>
-                <h1>Selecciona una cancion</h1>
+                <p className="eyebrow">Biblioteca</p>
+                <h1>Cancionero compartido</h1>
               </div>
               <div className="toolbar">
                 <input
@@ -1183,6 +1062,130 @@ function App() {
               onSave={handleSaveSong}
             />
           </>
+        ) : null}
+
+        {activeView === 'groups' ? (
+          <section className="workspace">
+            <div className="workspace-header">
+              <div>
+                <p className="eyebrow">Grupos</p>
+                <h1>Gestiona equipos y accesos</h1>
+              </div>
+              <button className="secondary-button" type="button" onClick={() => void loadRemoteWorkspace()}>
+                Actualizar
+              </button>
+            </div>
+
+            {syncMode === 'supabase' && syncMessage ? <p className="page-status">{syncMessage}</p> : null}
+
+            <div className="groups-layout">
+              <section className="form-panel group-form-panel">
+                <div>
+                  <p className="eyebrow">Grupo activo</p>
+                  <h2>{activeWorkspace?.name ?? 'Sin grupo activo'}</h2>
+                </div>
+                <div className="group-code-box">
+                  <span>Codigo para invitar</span>
+                  <strong translate="no">{inviteCode || 'Sin codigo'}</strong>
+                </div>
+                <div className="toolbar">
+                  <button className="secondary-button" type="button" disabled={!inviteCode} onClick={() => void copyInviteCode(inviteCode)}>
+                    <Copy size={17} /> Copiar codigo
+                  </button>
+                  {activeWorkspace?.role === 'admin' ? (
+                    <button className="danger-button" type="button" onClick={() => setGroupPendingDelete(activeWorkspace)}>
+                      <Trash2 size={17} /> Eliminar grupo
+                    </button>
+                  ) : null}
+                </div>
+              </section>
+
+              <section className="form-panel group-form-panel">
+                <div>
+                  <p className="eyebrow">Nuevo grupo</p>
+                  <h2>Crear grupo</h2>
+                </div>
+                <label>
+                  Nombre del grupo
+                  <input
+                    autoComplete="off"
+                    maxLength={80}
+                    value={newGroupName}
+                    onChange={(event) => setNewGroupName(event.target.value)}
+                    placeholder="Vive Worship"
+                  />
+                </label>
+                <button className="primary-button" type="button" onClick={() => void handleCreateWorkspace()}>
+                  <Plus size={18} /> Crear grupo
+                </button>
+              </section>
+
+              <section className="form-panel group-form-panel">
+                <div>
+                  <p className="eyebrow">Invitacion</p>
+                  <h2>Unirme a un grupo</h2>
+                </div>
+                <label>
+                  Codigo del administrador
+                  <input
+                    autoComplete="off"
+                    value={joinGroupCode}
+                    onChange={(event) => setJoinGroupCode(event.target.value)}
+                    placeholder="Ej. F889F42F"
+                  />
+                </label>
+                <button className="secondary-button" type="button" onClick={() => void handleJoinWorkspace()}>
+                  Unirme
+                </button>
+              </section>
+            </div>
+
+            <section className="group-list-section">
+              <div className="panel-header">
+                <div>
+                  <p className="eyebrow">Mis grupos</p>
+                  <h2>Espacios compartidos</h2>
+                </div>
+              </div>
+              <div className="group-card-grid">
+                {workspaces.map((workspace) => (
+                  <article className={workspace.groupId === session.groupId ? 'group-card is-active' : 'group-card'} key={workspace.groupId}>
+                    <div>
+                      <strong>{workspace.name}</strong>
+                      <span>{roleLabel(workspace.role)}</span>
+                    </div>
+                    <code translate="no">{workspace.inviteCode}</code>
+                    <div className="toolbar">
+                      <button className="secondary-button" type="button" onClick={() => void switchWorkspace(workspace)}>
+                        Abrir grupo
+                      </button>
+                      <button
+                        className="icon-button"
+                        type="button"
+                        aria-label={`Copiar codigo de ${workspace.name}`}
+                        title="Copiar codigo"
+                        onClick={() => void copyInviteCode(workspace.inviteCode)}
+                      >
+                        <Copy size={17} />
+                      </button>
+                      {workspace.role === 'admin' ? (
+                        <button
+                          className="icon-button danger"
+                          type="button"
+                          aria-label={`Eliminar ${workspace.name}`}
+                          title="Eliminar grupo"
+                          onClick={() => setGroupPendingDelete(workspace)}
+                        >
+                          <Trash2 size={17} />
+                        </button>
+                      ) : null}
+                    </div>
+                  </article>
+                ))}
+                {workspaces.length === 0 ? <p className="empty-state">Crea un grupo o unete con un codigo para empezar.</p> : null}
+              </div>
+            </section>
+          </section>
         ) : null}
 
         {activeView === 'setlists' ? (
