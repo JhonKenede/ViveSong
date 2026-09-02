@@ -647,6 +647,10 @@ h3 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.group-content-grid--single {
+  grid-template-columns: 1fr;
+}
+
 .group-content-grid > section {
   border: 1px solid #edf0ee;
   border-radius: 8px;

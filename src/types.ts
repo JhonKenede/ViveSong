@@ -71,7 +71,7 @@ export interface ParsedDirective {
 
 export type ParsedSongBlock = ParsedChordLine | ParsedDirective;
 
-export type ViewMode = 'library' | 'song' | 'editor' | 'setlists' | 'performance' | 'groups' | 'profile';
+export type ViewMode = 'library' | 'song' | 'group-song' | 'editor' | 'setlists' | 'performance' | 'groups' | 'profile';
 
 export type GroupRole = 'admin' | 'editor' | 'musician';
 

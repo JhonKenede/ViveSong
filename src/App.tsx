@@ -75,7 +75,7 @@ interface DuplicatePrompt {
   inputs: SongInput[];
 }
 
-const navItems: Array<{ view: Exclude<ViewMode, 'song'>; label: string; icon: typeof Library }> = [
+const navItems: Array<{ view: Exclude<ViewMode, 'song' | 'group-song'>; label: string; icon: typeof Library }> = [
   { view: 'library', label: 'Biblioteca', icon: Library },
   { view: 'editor', label: 'Editor', icon: Music2 },
   { view: 'setlists', label: 'Repertorios', icon: ListMusic },
@@ -126,7 +126,7 @@ function App() {
 
   useEffect(() => saveSongs(songs), [songs]);
   useEffect(() => saveSetlists(setlists), [setlists]);
-  useEffect(() => setSongReaderSemitones(0), [selectedSongId]);
+  useEffect(() => setSongReaderSemitones(0), [selectedSongId, selectedGroupSongId]);
 
   const activateRemoteWorkspace = useCallback(async (workspace: WorkspaceSession, message: string) => {
     const remoteData = await fetchWorkspaceData(workspace.groupId);
@@ -380,6 +380,7 @@ function App() {
   const selectedSong = visibleSongs.find((song) => song.id === selectedSongId) ?? visibleSongs[0];
   const selectedGroupSong = selectedGroupSongId ? visibleSongs.find((song) => song.id === selectedGroupSongId) : undefined;
   const renderedSelectedSong = selectedSong ? transposeSong(selectedSong, songReaderSemitones) : undefined;
+  const renderedSelectedGroupSong = selectedGroupSong ? transposeSong(selectedGroupSong, songReaderSemitones) : undefined;
   const editingSong = visibleSongs.find((song) => song.id === editingSongId);
   const editorSong = editingSong ?? draftSong ?? undefined;
   const selectedSetlist = visibleSetlists.find((setlist) => setlist.id === selectedSetlistId) ?? visibleSetlists[0];
@@ -566,6 +567,12 @@ function App() {
     setActiveView('song');
   }
 
+  function openGroupSong(songId: string) {
+    setDraftSong(null);
+    setSelectedGroupSongId(songId);
+    setActiveView('group-song');
+  }
+
   async function deleteSong(songId: string) {
     if (!canDeleteSongs(session)) return;
     setSongs((current) => current.filter((song) => song.id !== songId));
@@ -602,6 +609,11 @@ function App() {
   function changeSongReaderKey(nextKey: SongInput['key']) {
     if (!renderedSelectedSong) return;
     setSongReaderSemitones((current) => current + getSemitoneDistance(renderedSelectedSong.key, nextKey));
+  }
+
+  function changeGroupSongReaderKey(nextKey: SongInput['key']) {
+    if (!renderedSelectedGroupSong) return;
+    setSongReaderSemitones((current) => current + getSemitoneDistance(renderedSelectedGroupSong.key, nextKey));
   }
 
   function saveDuplicateVersions(inputs: SongInput[]) {
@@ -812,7 +824,10 @@ function App() {
         <nav aria-label="Principal">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = activeView === item.view || (activeView === 'song' && item.view === 'library');
+            const isActive =
+              activeView === item.view ||
+              (activeView === 'song' && item.view === 'library') ||
+              (activeView === 'group-song' && item.view === 'groups');
             return (
               <button
                 className={isActive ? 'nav-button is-active' : 'nav-button'}
@@ -1080,6 +1095,75 @@ function App() {
           </section>
         ) : null}
 
+        {activeView === 'group-song' && selectedGroupSong && renderedSelectedGroupSong ? (
+          <section className="workspace">
+            <article className="song-detail song-detail--reader">
+              <div className="song-reader-header">
+                <div className="song-reader-title">
+                  <button className="secondary-button back-button" onClick={() => setActiveView('groups')}>
+                    <ArrowLeft size={18} /> Grupos
+                  </button>
+                  <p className="eyebrow">{activeWorkspace?.name ?? 'Grupo'}</p>
+                  <h1>{selectedGroupSong.title}</h1>
+                  <div className="meta-strip">
+                    <span>{selectedGroupSong.artist}</span>
+                    <span translate="no">{renderedSelectedGroupSong.key}</span>
+                    <span translate="no">{selectedGroupSong.tempo} BPM</span>
+                    <span translate="no">{selectedGroupSong.timeSignature}</span>
+                    <span>{formatDuration(selectedGroupSong.durationSeconds)}</span>
+                  </div>
+                </div>
+                <div className="song-reader-actions">
+                  <div className="transpose-control transpose-control--compact" aria-label="Cambiar tono">
+                    <span>Cambiar tono</span>
+                    <button
+                      className="icon-button"
+                      type="button"
+                      onClick={() => setSongReaderSemitones((value) => value - 1)}
+                      aria-label="Bajar tono"
+                    >
+                      -
+                    </button>
+                    <select
+                      aria-label="Cambiar tono de la cancion del grupo"
+                      translate="no"
+                      value={renderedSelectedGroupSong.key}
+                      onChange={(event) => changeGroupSongReaderKey(event.target.value as SongInput['key'])}
+                    >
+                      {musicalKeys.map((key) => (
+                        <option key={key}>{key}</option>
+                      ))}
+                    </select>
+                    <button
+                      className="icon-button"
+                      type="button"
+                      onClick={() => setSongReaderSemitones((value) => value + 1)}
+                      aria-label="Subir tono"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <button className="secondary-button" onClick={() => setSongReaderSemitones(0)}>
+                    Reiniciar tono
+                  </button>
+                  <button className="secondary-button" onClick={() => exportSong(selectedGroupSong)}>
+                    <Download size={17} /> Exportar
+                  </button>
+                </div>
+              </div>
+              <div className="song-reader-content">
+                <div className="tag-list">
+                  {selectedGroupSong.tags.map((tag) => (
+                    <span key={tag}>{tag}</span>
+                  ))}
+                </div>
+                {selectedGroupSong.notes.trim() ? <p className="song-notes">{selectedGroupSong.notes}</p> : null}
+                <ChordPreview source={renderedSelectedGroupSong.chordPro} />
+              </div>
+            </article>
+          </section>
+        ) : null}
+
         {activeView === 'editor' ? (
           <>
             {duplicateAlert ? <div className="editor-alert">{duplicateAlert}</div> : null}
@@ -1133,7 +1217,7 @@ function App() {
                   <span>{visibleSetlists.length} repertorios del grupo</span>
                   <span>{roleLabel(session.role)}</span>
                 </div>
-                <div className="group-content-grid">
+                <div className="group-content-grid group-content-grid--single">
                   <section>
                     <div className="panel-header">
                       <div>
@@ -1150,7 +1234,7 @@ function App() {
                           className={selectedGroupSong?.id === song.id ? 'is-active' : ''}
                           key={song.id}
                           type="button"
-                          onClick={() => setSelectedGroupSongId(song.id)}
+                          onClick={() => openGroupSong(song.id)}
                         >
                           <span>
                             <strong>{song.title}</strong>
@@ -1161,40 +1245,6 @@ function App() {
                       ))}
                       {visibleSongs.length === 0 ? <p className="empty-state">No hay canciones subidas en la biblioteca.</p> : null}
                     </div>
-                  </section>
-
-                  <section className="group-song-panel">
-                    {selectedGroupSong ? (
-                      <>
-                        <div className="panel-header">
-                          <div>
-                            <p className="eyebrow">Cancion seleccionada</p>
-                            <h3>{selectedGroupSong.title}</h3>
-                          </div>
-                          <button
-                            className="secondary-button"
-                            type="button"
-                            disabled={!canEditSong(session, selectedGroupSong)}
-                            onClick={() => {
-                              setEditingSongId(selectedGroupSong.id);
-                              setActiveView('editor');
-                            }}
-                          >
-                            Editar
-                          </button>
-                        </div>
-                        <div className="meta-strip">
-                          <span>{selectedGroupSong.artist}</span>
-                          <span translate="no">{selectedGroupSong.key}</span>
-                          <span>{formatDuration(selectedGroupSong.durationSeconds)}</span>
-                        </div>
-                        <div className="group-song-preview">
-                          <ChordPreview source={selectedGroupSong.chordPro} />
-                        </div>
-                      </>
-                    ) : (
-                      <p className="empty-state">Selecciona una cancion para verla dentro del grupo.</p>
-                    )}
                   </section>
                 </div>
 
