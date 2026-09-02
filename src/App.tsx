@@ -192,7 +192,7 @@ function App() {
   async function switchWorkspace(workspace: WorkspaceSummary) {
     try {
       await activateRemoteWorkspace(workspace, `Grupo activo: ${workspace.name}.`);
-      setActiveView('library');
+      setActiveView('groups');
     } catch (error) {
       setSyncMessage(getFriendlyBackendError(error));
     }
@@ -210,7 +210,7 @@ function App() {
       await activateRemoteWorkspace(workspace, 'Te uniste al grupo.');
       await refreshWorkspaces();
       setJoinGroupCode('');
-      setActiveView('library');
+      setActiveView('groups');
     } catch (error) {
       setSyncMessage(getFriendlyAuthError(error, 'No se pudo unir al grupo.'));
     }
@@ -228,7 +228,7 @@ function App() {
       await activateRemoteWorkspace(workspace, `Grupo creado: ${groupName}.`);
       await refreshWorkspaces();
       setNewGroupName('');
-      setActiveView('library');
+      setActiveView('groups');
     } catch (error) {
       setSyncMessage(getFriendlyBackendError(error));
     }
@@ -261,7 +261,7 @@ function App() {
       const nextWorkspace = remainingWorkspaces[0];
       if (nextWorkspace) {
         await activateRemoteWorkspace(nextWorkspace, `Grupo eliminado: ${groupPendingDelete.name}.`);
-        setActiveView('library');
+        setActiveView('groups');
         return;
       }
 
@@ -273,7 +273,7 @@ function App() {
       setSelectedSetlistId('');
       setSyncMode('supabase');
       setSyncMessage('Grupo archivado. Crea un grupo o unete a uno para compartir canciones.');
-      setActiveView('library');
+      setActiveView('groups');
     } catch (error) {
       setGroupPendingDelete(null);
       setSyncMessage(getFriendlyBackendError(error));
@@ -1139,6 +1139,85 @@ function App() {
                 </button>
               </section>
             </div>
+
+            <section className="group-detail-panel">
+              <div className="group-detail-header">
+                <div>
+                  <p className="eyebrow">Vista del grupo</p>
+                  <h2>{activeWorkspace?.name ?? 'Sin grupo activo'}</h2>
+                </div>
+                <span>Biblioteca aparte</span>
+              </div>
+              <div className="group-stat-grid">
+                <div>
+                  <strong>{visibleSongs.length}</strong>
+                  <span>canciones disponibles</span>
+                </div>
+                <div>
+                  <strong>{visibleSetlists.length}</strong>
+                  <span>repertorios del grupo</span>
+                </div>
+                <div>
+                  <strong>{workspaces.length}</strong>
+                  <span>grupos vinculados</span>
+                </div>
+              </div>
+              <div className="group-content-grid">
+                <section>
+                  <div className="panel-header">
+                    <div>
+                      <p className="eyebrow">Cancionero</p>
+                      <h3>Canciones disponibles</h3>
+                    </div>
+                    <button className="secondary-button" type="button" onClick={() => setActiveView('library')}>
+                      Ir a biblioteca
+                    </button>
+                  </div>
+                  <div className="group-mini-list">
+                    {visibleSongs.slice(0, 6).map((song) => (
+                      <button key={song.id} type="button" onClick={() => openSong(song.id)}>
+                        <span>
+                          <strong>{song.title}</strong>
+                          <small>{song.artist}</small>
+                        </span>
+                        <span translate="no">{song.key}</span>
+                      </button>
+                    ))}
+                    {visibleSongs.length === 0 ? <p className="empty-state">No hay canciones subidas en la biblioteca.</p> : null}
+                  </div>
+                </section>
+                <section>
+                  <div className="panel-header">
+                    <div>
+                      <p className="eyebrow">Grupo activo</p>
+                      <h3>Repertorios</h3>
+                    </div>
+                    <button className="secondary-button" type="button" onClick={() => setActiveView('setlists')}>
+                      Ver repertorios
+                    </button>
+                  </div>
+                  <div className="group-mini-list">
+                    {visibleSetlists.slice(0, 6).map((setlist) => (
+                      <button
+                        key={setlist.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedSetlistId(setlist.id);
+                          setActiveView('setlists');
+                        }}
+                      >
+                        <span>
+                          <strong>{setlist.name}</strong>
+                          <small>{setlist.date}</small>
+                        </span>
+                        <span>{setlist.items.length}</span>
+                      </button>
+                    ))}
+                    {visibleSetlists.length === 0 ? <p className="empty-state">Este grupo todavia no tiene repertorios.</p> : null}
+                  </div>
+                </section>
+              </div>
+            </section>
 
             <section className="group-list-section">
               <div className="panel-header">

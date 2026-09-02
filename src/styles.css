@@ -588,6 +588,119 @@ h3 {
   gap: 14px;
 }
 
+.group-detail-panel {
+  background: #ffffff;
+  border: 1px solid #dbe2de;
+  border-radius: 8px;
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+}
+
+.group-detail-header {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+}
+
+.group-detail-header span {
+  background: #edf7f1;
+  border: 1px solid #cfe5d8;
+  border-radius: 999px;
+  color: #23553f;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.group-stat-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.group-stat-grid div {
+  background: #f7faf8;
+  border: 1px solid #edf0ee;
+  border-radius: 8px;
+  display: grid;
+  gap: 2px;
+  padding: 12px;
+}
+
+.group-stat-grid strong {
+  color: #12392a;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.group-stat-grid span {
+  color: #65736e;
+  font-size: 0.84rem;
+}
+
+.group-content-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.group-content-grid > section {
+  border: 1px solid #edf0ee;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+}
+
+.group-mini-list {
+  display: grid;
+  gap: 8px;
+}
+
+.group-mini-list button {
+  align-items: center;
+  background: #f7faf8;
+  border: 1px solid #e4ebe7;
+  border-radius: 8px;
+  color: #1d2b27;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  min-height: 54px;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.group-mini-list button:hover,
+.group-mini-list button:focus-visible {
+  background: #edf7f1;
+}
+
+.group-mini-list strong,
+.group-mini-list small {
+  display: block;
+  min-width: 0;
+}
+
+.group-mini-list small {
+  color: #65736e;
+  font-size: 0.84rem;
+}
+
+.group-mini-list button > span:first-child {
+  min-width: 0;
+}
+
+.group-mini-list button > span:last-child {
+  color: #1f7a55;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .group-card-grid {
   display: grid;
   gap: 12px;
@@ -1398,7 +1511,9 @@ label {
   .editor-grid,
   .metadata-grid,
   .setlist-builder,
-  .groups-layout {
+  .groups-layout,
+  .group-content-grid,
+  .group-stat-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1566,6 +1681,11 @@ label {
   .group-form-panel .danger-button,
   .group-card .secondary-button {
     width: 100%;
+  }
+
+  .group-detail-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .song-detail {
