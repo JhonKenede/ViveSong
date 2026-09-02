@@ -128,7 +128,6 @@ function App() {
   }, []);
 
   const loadDefaultWorkspace = useCallback(async (message: string) => {
-    setSyncMessage('Conectando con Supabase...');
     const workspace = await ensureWorkspace('ViveSong');
     await activateRemoteWorkspace(workspace, message);
   }, [activateRemoteWorkspace]);
@@ -224,6 +223,10 @@ function App() {
 
     if (message.includes('permission denied') || message.includes('grant select') || message.includes('42501')) {
       return 'Faltan permisos de lectura/escritura para usuarios autenticados en Supabase. Ejecuta la migracion 002_grant_authenticated_access.sql.';
+    }
+
+    if (message.includes('user from sub claim') || (message.includes('jwt') && message.includes('does not exist'))) {
+      return 'La sesion guardada ya no existe en Supabase. Vuelve a iniciar sesion.';
     }
 
     return rawMessage;

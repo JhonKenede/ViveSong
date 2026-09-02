@@ -52,9 +52,19 @@ export async function getCurrentAuthUser() {
 
 export async function hasStoredAuthSession() {
   if (!supabase) return false;
-  const { data, error } = await supabase.auth.getSession();
-  if (error) throw error;
-  return Boolean(data.session);
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+  if (!sessionData.session) return false;
+
+  const { error: userError } = await supabase.auth.getUser();
+  if (!userError) return true;
+
+  if (isMissingAuthUserError(userError.message)) {
+    await supabase.auth.signOut({ scope: 'local' });
+    return false;
+  }
+
+  throw userError;
 }
 
 export async function signInWithPassword(email: string, password: string) {
@@ -162,6 +172,14 @@ export async function upsertSetlist(setlist: Setlist): Promise<void> {
 
 function assertSupabase(): void {
   if (!supabase) throw new Error('Supabase no esta configurado.');
+}
+
+function isMissingAuthUserError(message: string) {
+  const normalizedMessage = message.toLowerCase();
+  return (
+    normalizedMessage.includes('user from sub claim') ||
+    (normalizedMessage.includes('jwt') && normalizedMessage.includes('does not exist'))
+  );
 }
 
 function firstRpcRow(data: unknown): { group_id: string; role: GroupRole; invite_code: string } {
