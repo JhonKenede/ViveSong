@@ -544,13 +544,6 @@ h3 {
   padding: 12px 14px;
 }
 
-.groups-layout {
-  align-items: stretch;
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
 .group-form-panel {
   align-content: start;
 }
@@ -565,8 +558,8 @@ h3 {
   background: #f7faf8;
   border: 1px solid #dbe2de;
   border-radius: 8px;
-  display: grid;
-  gap: 4px;
+  display: inline-grid;
+  gap: 2px;
   padding: 12px;
 }
 
@@ -598,47 +591,37 @@ h3 {
 }
 
 .group-detail-header {
-  align-items: center;
+  align-items: flex-start;
   display: flex;
   gap: 14px;
   justify-content: space-between;
 }
 
-.group-detail-header span {
-  background: #edf7f1;
-  border: 1px solid #cfe5d8;
-  border-radius: 999px;
-  color: #23553f;
-  font-size: 0.82rem;
-  font-weight: 800;
-  padding: 6px 10px;
-  white-space: nowrap;
+.group-header-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
-.group-stat-grid {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.group-stat-grid div {
+.group-summary-strip {
   background: #f7faf8;
   border: 1px solid #edf0ee;
   border-radius: 8px;
-  display: grid;
-  gap: 2px;
-  padding: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
 }
 
-.group-stat-grid strong {
-  color: #12392a;
-  font-size: 1.45rem;
-  line-height: 1;
-}
-
-.group-stat-grid span {
-  color: #65736e;
+.group-summary-strip span {
+  background: #ffffff;
+  border: 1px solid #e4ebe7;
+  border-radius: 999px;
+  color: #43504c;
   font-size: 0.84rem;
+  padding: 5px 9px;
 }
 
 .group-content-grid {
@@ -676,8 +659,10 @@ h3 {
 }
 
 .group-mini-list button:hover,
-.group-mini-list button:focus-visible {
+.group-mini-list button:focus-visible,
+.group-mini-list button.is-active {
   background: #edf7f1;
+  border-color: #a7d8bd;
 }
 
 .group-mini-list strong,
@@ -699,6 +684,53 @@ h3 {
   color: #1f7a55;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.group-song-panel {
+  align-content: start;
+}
+
+.group-song-preview {
+  border-top: 1px solid #edf0ee;
+  max-height: 360px;
+  overflow: auto;
+  padding-top: 12px;
+}
+
+.group-repertoire-strip {
+  border: 1px solid #edf0ee;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.group-mini-list--inline {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.group-management-panel {
+  background: #ffffff;
+  border: 1px solid #dbe2de;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.group-management-panel summary {
+  color: #12392a;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.group-management-panel[open] summary {
+  margin-bottom: 14px;
+}
+
+.groups-layout {
+  align-items: stretch;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .group-card-grid {
