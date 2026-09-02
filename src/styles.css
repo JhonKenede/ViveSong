@@ -84,9 +84,18 @@ button:disabled {
 }
 
 .auth-copy p:not(.eyebrow),
+.auth-hint,
 .auth-note {
   color: #52615c;
   line-height: 1.55;
+}
+
+.auth-hint {
+  background: #f6faf7;
+  border: 1px solid #dbe2de;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  padding: 12px 14px;
 }
 
 .auth-form {

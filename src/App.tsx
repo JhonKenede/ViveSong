@@ -171,6 +171,10 @@ function App() {
       return 'La cuenta se ha creado, pero Supabase pide confirmar el correo antes de entrar. Revisa tu email y despues pulsa Entrar.';
     }
 
+    if (message.includes('rate limit') || message.includes('frequency') || message.includes('frecuencia')) {
+      return 'Supabase ha bloqueado temporalmente los correos de confirmacion por demasiados intentos. Espera unos minutos o desactiva la confirmacion de email en Supabase para el ensayo.';
+    }
+
     if (message.includes('invalid') && message.includes('email')) {
       return 'Ese correo no parece valido. Usa un correo real, por ejemplo Gmail, Outlook o el tuyo habitual.';
     }
@@ -541,6 +545,9 @@ function App() {
               {syncMessage}
             </div>
           ) : null}
+          <p className="auth-hint">
+            Para pruebas con el grupo, puedes desactivar la confirmacion por correo en Supabase y las cuentas entraran al momento.
+          </p>
 
           <form
             className="auth-form"
