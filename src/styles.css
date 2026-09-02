@@ -64,6 +64,10 @@ button:disabled {
   width: min(100%, 520px);
 }
 
+.auth-card--loading {
+  max-width: 460px;
+}
+
 .auth-brand {
   align-items: center;
   color: #111719;

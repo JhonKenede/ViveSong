@@ -104,6 +104,7 @@ function App() {
   const [pastedSongText, setPastedSongText] = useState('');
   const [syncMode, setSyncMode] = useState<SyncMode>('local');
   const [syncMessage, setSyncMessage] = useState('');
+  const [authBootstrapping, setAuthBootstrapping] = useState(isSupabaseConfigured);
   const [authSubmitting, setAuthSubmitting] = useState<AuthAction | null>(null);
   const [authForm, setAuthForm] = useState({ email: '', password: '', inviteCode: '' });
   const [inviteCode, setInviteCode] = useState('');
@@ -123,6 +124,7 @@ function App() {
     setSelectedSetlistId(remoteData.setlists[0]?.id ?? '');
     setSyncMode('supabase');
     setSyncMessage(message);
+    setAuthBootstrapping(false);
   }, []);
 
   const loadDefaultWorkspace = useCallback(async (message: string) => {
@@ -137,11 +139,13 @@ function App() {
       const hasSession = await hasStoredAuthSession();
       if (!hasSession) {
         setSyncMessage('');
+        setAuthBootstrapping(false);
         return;
       }
 
       await loadDefaultWorkspace('Conectado a Supabase.');
     } catch (error) {
+      setAuthBootstrapping(false);
       setSyncMode('local');
       const message = getFriendlyBackendError(error);
       setSyncMessage(message.includes('Inicia sesion') ? '' : message);
@@ -557,6 +561,27 @@ function App() {
       {duplicateWarning}
     </div>
   ) : null;
+
+  if (isSupabaseConfigured && authBootstrapping && syncMode !== 'supabase') {
+    return (
+      <main className="auth-screen">
+        <section className="auth-card auth-card--loading" aria-live="polite">
+          <div className="auth-brand">
+            <div className="brand-mark">VS</div>
+            <div>
+              <strong>ViveSong</strong>
+              <span>Repertorios en vivo</span>
+            </div>
+          </div>
+          <div className="auth-copy">
+            <p className="eyebrow">Sesion guardada</p>
+            <h1>Abriendo ViveSong...</h1>
+            <p>Estamos comprobando si este dispositivo ya tiene una sesion activa.</p>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   if (isSupabaseConfigured && syncMode !== 'supabase') {
     return (
