@@ -18,6 +18,7 @@ import {
   Search,
   Trash2,
   Upload,
+  UserCircle,
   UsersRound,
   X,
 } from 'lucide-react';
@@ -80,6 +81,7 @@ const navItems: Array<{ view: Exclude<ViewMode, 'song'>; label: string; icon: ty
   { view: 'setlists', label: 'Repertorios', icon: ListMusic },
   { view: 'performance', label: 'Directo', icon: Mic2 },
   { view: 'groups', label: 'Grupos', icon: UsersRound },
+  { view: 'profile', label: 'Perfil', icon: UserCircle },
 ];
 
 const musicalKeys = CHROMATIC_KEYS;
@@ -119,6 +121,7 @@ function App() {
   const [newGroupName, setNewGroupName] = useState('');
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   const [inviteCode, setInviteCode] = useState('');
+  const [userEmail, setUserEmail] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => saveSongs(songs), [songs]);
@@ -128,6 +131,7 @@ function App() {
   const activateRemoteWorkspace = useCallback(async (workspace: WorkspaceSession, message: string) => {
     const remoteData = await fetchWorkspaceData(workspace.groupId);
     setSession({ userId: workspace.userId, groupId: workspace.groupId, role: workspace.role });
+    setUserEmail(workspace.userEmail);
     setInviteCode(workspace.inviteCode);
     setSongs(remoteData.songs);
     setSetlists(remoteData.setlists);
@@ -435,6 +439,7 @@ function App() {
       await signOut();
       setSyncMode('local');
       setInviteCode('');
+      setUserEmail('');
       setJoinGroupCode('');
       setNewGroupName('');
       setWorkspaces([]);
@@ -817,6 +822,7 @@ function App() {
         )}
         <div className="sidebar-summary">
           {syncMode === 'supabase' ? <span>{activeWorkspace?.name ?? 'Sin grupo activo'}</span> : null}
+          {syncMode === 'supabase' && userEmail ? <span>{userEmail}</span> : null}
           <span>{visibleSongs.length} canciones</span>
           <span>{visibleSetlists.length} repertorios</span>
           {syncMode === 'supabase' ? (
@@ -1292,6 +1298,88 @@ function App() {
                 {workspaces.length === 0 ? <p className="empty-state">Crea un grupo o unete con un codigo para empezar.</p> : null}
               </div>
             </section>
+          </section>
+        ) : null}
+
+        {activeView === 'profile' ? (
+          <section className="workspace">
+            <div className="workspace-header">
+              <div>
+                <p className="eyebrow">Perfil</p>
+                <h1>Cuenta y preferencias</h1>
+              </div>
+              <button className="secondary-button" type="button" onClick={() => void loadRemoteWorkspace()}>
+                Actualizar
+              </button>
+            </div>
+
+            {syncMessage ? <p className="page-status">{syncMessage}</p> : null}
+
+            <div className="profile-layout">
+              <section className="profile-card profile-card--hero">
+                <div className="profile-avatar" aria-hidden="true">
+                  {(userEmail || 'VS').slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <p className="eyebrow">Usuario</p>
+                  <h2>{userEmail || 'Usuario local'}</h2>
+                  <span>{syncMode === 'supabase' ? 'Conectado con Supabase' : 'Modo local'}</span>
+                </div>
+              </section>
+
+              <section className="profile-card">
+                <p className="eyebrow">Sesion</p>
+                <div className="profile-field-list">
+                  <div>
+                    <span>Rol actual</span>
+                    <strong>{roleLabel(session.role)}</strong>
+                  </div>
+                  <div>
+                    <span>Grupo activo</span>
+                    <strong>{activeWorkspace?.name ?? 'Sin grupo activo'}</strong>
+                  </div>
+                  <div>
+                    <span>Identificador</span>
+                    <strong translate="no">{session.userId}</strong>
+                  </div>
+                </div>
+              </section>
+
+              <section className="profile-card">
+                <p className="eyebrow">Actividad</p>
+                <div className="profile-stat-grid">
+                  <div>
+                    <strong>{visibleSongs.length}</strong>
+                    <span>Canciones</span>
+                  </div>
+                  <div>
+                    <strong>{visibleSetlists.length}</strong>
+                    <span>Repertorios</span>
+                  </div>
+                  <div>
+                    <strong>{workspaces.length}</strong>
+                    <span>Grupos</span>
+                  </div>
+                </div>
+              </section>
+
+              <section className="profile-card">
+                <p className="eyebrow">Acciones</p>
+                <div className="profile-actions">
+                  <button className="secondary-button" type="button" onClick={() => setActiveView('groups')}>
+                    <UsersRound size={17} /> Gestionar grupos
+                  </button>
+                  <button className="secondary-button" type="button" onClick={() => setActiveView('library')}>
+                    <Library size={17} /> Abrir biblioteca
+                  </button>
+                  {syncMode === 'supabase' ? (
+                    <button className="danger-button" type="button" onClick={() => void handleSignOut()}>
+                      Salir
+                    </button>
+                  ) : null}
+                </div>
+              </section>
+            </div>
           </section>
         ) : null}
 

@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient';
 
 export interface WorkspaceSession extends UserSession {
   inviteCode: string;
+  userEmail: string;
 }
 
 export interface WorkspaceSummary extends WorkspaceSession {
@@ -120,6 +121,7 @@ export async function ensureWorkspace(groupName = 'ViveSong'): Promise<Workspace
   const workspace = firstRpcRow(data);
   return {
     userId: user.id,
+    userEmail: user.email ?? '',
     groupId: workspace.group_id,
     role: workspace.role,
     inviteCode: workspace.invite_code,
@@ -136,6 +138,7 @@ export async function createWorkspace(groupName: string): Promise<WorkspaceSessi
   const workspace = firstRpcRow(data);
   return {
     userId: user.id,
+    userEmail: user.email ?? '',
     groupId: workspace.group_id,
     role: workspace.role,
     inviteCode: workspace.invite_code,
@@ -161,6 +164,7 @@ export async function joinWorkspaceByCode(code: string): Promise<WorkspaceSessio
   const workspace = firstRpcRow(data);
   return {
     userId: user.id,
+    userEmail: user.email ?? '',
     groupId: workspace.group_id,
     role: workspace.role,
     inviteCode: workspace.invite_code,
@@ -187,6 +191,7 @@ export async function listUserWorkspaces(): Promise<WorkspaceSummary[]> {
     return [
       {
         userId: user.id,
+        userEmail: user.email ?? '',
         groupId: membership.group_id,
         role: membership.role,
         name: group.name ?? 'Grupo',

@@ -766,6 +766,98 @@ h3 {
   width: fit-content;
 }
 
+.profile-layout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(280px, 1.1fr) minmax(280px, 0.9fr);
+}
+
+.profile-card {
+  background: #ffffff;
+  border: 1px solid #dbe2de;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 18px;
+}
+
+.profile-card--hero {
+  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.profile-avatar {
+  align-items: center;
+  background: #5ee0a1;
+  border-radius: 8px;
+  color: #102019;
+  display: grid;
+  font-weight: 900;
+  height: 62px;
+  justify-content: center;
+  width: 62px;
+}
+
+.profile-card h2 {
+  overflow-wrap: anywhere;
+}
+
+.profile-card span,
+.profile-field-list span,
+.profile-stat-grid span {
+  color: #65736e;
+}
+
+.profile-field-list {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-field-list div {
+  border-bottom: 1px solid #edf0ee;
+  display: grid;
+  gap: 2px;
+  padding-bottom: 10px;
+}
+
+.profile-field-list div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.profile-field-list strong {
+  overflow-wrap: anywhere;
+}
+
+.profile-stat-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.profile-stat-grid div {
+  background: #f7faf8;
+  border: 1px solid #edf0ee;
+  border-radius: 8px;
+  display: grid;
+  gap: 2px;
+  padding: 12px;
+}
+
+.profile-stat-grid strong {
+  color: #12392a;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.profile-actions {
+  align-items: start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .toolbar {
   align-items: center;
   display: flex;
@@ -1545,7 +1637,8 @@ label {
   .setlist-builder,
   .groups-layout,
   .group-content-grid,
-  .group-stat-grid {
+  .group-stat-grid,
+  .profile-layout {
     grid-template-columns: 1fr;
   }
 
@@ -1664,10 +1757,9 @@ label {
   }
 
   nav {
-    display: grid;
+    display: flex;
     gap: 6px;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    overflow: visible;
+    overflow-x: auto;
   }
 
   .group-nav {
@@ -1687,6 +1779,7 @@ label {
   .nav-button {
     flex-direction: column;
     font-size: 0.68rem;
+    flex: 0 0 74px;
     gap: 4px;
     justify-content: center;
     min-height: 44px;
@@ -1718,6 +1811,25 @@ label {
   .group-detail-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .group-header-actions,
+  .profile-actions {
+    align-items: stretch;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .group-header-actions .secondary-button,
+  .group-header-actions .danger-button,
+  .profile-actions .secondary-button,
+  .profile-actions .danger-button {
+    width: 100%;
+  }
+
+  .profile-card--hero,
+  .profile-stat-grid {
+    grid-template-columns: 1fr;
   }
 
   .song-detail {
