@@ -49,6 +49,7 @@ import { archiveSong, createSong, duplicateSong, filterSongs, transposeSong, upd
 import { loadSetlists, loadSongs, saveSetlists, saveSongs } from './lib/storage';
 import { isSupabaseConfigured } from './lib/supabaseClient';
 import {
+  createWorkspace,
   deleteSongRemote,
   ensureWorkspace,
   fetchWorkspaceData,
@@ -110,6 +111,7 @@ function App() {
   const [authSubmitting, setAuthSubmitting] = useState<AuthAction | null>(null);
   const [authForm, setAuthForm] = useState({ email: '', password: '' });
   const [joinGroupCode, setJoinGroupCode] = useState('');
+  const [newGroupName, setNewGroupName] = useState('');
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   const [inviteCode, setInviteCode] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -210,6 +212,24 @@ function App() {
     }
   }
 
+  async function handleCreateWorkspace() {
+    const groupName = newGroupName.trim();
+    if (groupName.length < 2 || groupName.length > 80) {
+      setSyncMessage('El nombre del grupo debe tener entre 2 y 80 caracteres.');
+      return;
+    }
+
+    try {
+      const workspace = await createWorkspace(groupName);
+      await activateRemoteWorkspace(workspace, `Grupo creado: ${groupName}.`);
+      await refreshWorkspaces();
+      setNewGroupName('');
+      setActiveView('library');
+    } catch (error) {
+      setSyncMessage(getFriendlyBackendError(error));
+    }
+  }
+
   function getErrorMessage(error: unknown) {
     if (error instanceof Error) return error.message;
     if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') return error.message;
@@ -249,7 +269,12 @@ function App() {
     if (!rawMessage) return 'No se pudo conectar con Supabase.';
     const message = rawMessage.toLowerCase();
 
-    if (message.includes('ensure_default_group') || message.includes('schema cache') || message.includes('pgrst202')) {
+    if (
+      message.includes('ensure_default_group') ||
+      message.includes('create_group') ||
+      message.includes('schema cache') ||
+      message.includes('pgrst202')
+    ) {
       return 'Falta instalar la base de datos de ViveSong en Supabase. Ejecuta la migracion SQL desde el SQL Editor.';
     }
 
@@ -358,6 +383,7 @@ function App() {
       setSyncMode('local');
       setInviteCode('');
       setJoinGroupCode('');
+      setNewGroupName('');
       setWorkspaces([]);
       setSession(defaultSession);
       setSongs(loadSongs());
@@ -749,6 +775,19 @@ function App() {
                   <input readOnly value={inviteCode} />
                 </label>
                 <label>
+                  Crear grupo
+                  <input
+                    autoComplete="off"
+                    maxLength={80}
+                    value={newGroupName}
+                    onChange={(event) => setNewGroupName(event.target.value)}
+                    placeholder="Nombre del grupo"
+                  />
+                </label>
+                <button className="secondary-button" type="button" onClick={() => void handleCreateWorkspace()}>
+                  <Plus size={16} /> Crear grupo
+                </button>
+                <label>
                   Unirme a otro grupo
                   <input
                     autoComplete="off"
@@ -782,6 +821,19 @@ function App() {
               <code translate="no">{inviteCode}</code>
             </summary>
             <div className="mobile-group-body">
+              <label>
+                Crear grupo
+                <input
+                  autoComplete="off"
+                  maxLength={80}
+                  value={newGroupName}
+                  onChange={(event) => setNewGroupName(event.target.value)}
+                  placeholder="Nombre del grupo"
+                />
+              </label>
+              <button className="secondary-button" type="button" onClick={() => void handleCreateWorkspace()}>
+                <Plus size={16} /> Crear grupo
+              </button>
               <label>
                 Unirme a otro grupo
                 <input

@@ -124,6 +124,22 @@ export async function ensureWorkspace(groupName = 'ViveSong'): Promise<Workspace
   };
 }
 
+export async function createWorkspace(groupName: string): Promise<WorkspaceSession> {
+  assertSupabase();
+  const user = await getCurrentAuthUser();
+  if (!user) throw new Error('Inicia sesion para crear un grupo.');
+
+  const { data, error } = await supabase!.rpc('create_group', { group_name: groupName });
+  if (error) throw error;
+  const workspace = firstRpcRow(data);
+  return {
+    userId: user.id,
+    groupId: workspace.group_id,
+    role: workspace.role,
+    inviteCode: workspace.invite_code,
+  };
+}
+
 export async function joinWorkspaceByCode(code: string): Promise<WorkspaceSession> {
   assertSupabase();
   const user = await getCurrentAuthUser();
