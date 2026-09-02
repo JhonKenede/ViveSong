@@ -54,8 +54,8 @@ import {
   createWorkspace,
   deleteWorkspace,
   deleteSongRemote,
-  ensureWorkspace,
   fetchWorkspaceData,
+  getCurrentAuthUser,
   hasStoredAuthSession,
   joinWorkspaceByCode,
   listUserWorkspaces,
@@ -147,11 +147,32 @@ function App() {
     setWorkspaces(await listUserWorkspaces());
   }, []);
 
-  const loadDefaultWorkspace = useCallback(async (message: string) => {
-    const workspace = await ensureWorkspace('ViveSong');
-    await activateRemoteWorkspace(workspace, message);
-    await refreshWorkspaces();
-  }, [activateRemoteWorkspace, refreshWorkspaces]);
+  const openExistingRemoteWorkspace = useCallback(async (message: string, emptyMessage: string) => {
+    const user = await getCurrentAuthUser();
+    if (!user) throw new Error('Inicia sesion para usar Supabase.');
+
+    const userWorkspaces = await listUserWorkspaces();
+    setWorkspaces(userWorkspaces);
+
+    const workspace = userWorkspaces[0];
+    if (workspace) {
+      await activateRemoteWorkspace(workspace, message);
+      return;
+    }
+
+    setSession({ userId: user.id, groupId: '', role: 'musician' });
+    setUserEmail(user.email ?? '');
+    setInviteCode('');
+    setSongs([]);
+    setSetlists([]);
+    setSelectedSongId('');
+    setSelectedGroupSongId('');
+    setSelectedSetlistId('');
+    setSyncMode('supabase');
+    setSyncMessage(emptyMessage);
+    setAuthBootstrapping(false);
+    setActiveView('groups');
+  }, [activateRemoteWorkspace]);
 
   const loadRemoteWorkspace = useCallback(async () => {
     if (!isSupabaseConfigured) return;
@@ -163,14 +184,14 @@ function App() {
         return;
       }
 
-      await loadDefaultWorkspace('Conectado a Supabase.');
+      await openExistingRemoteWorkspace('Conectado a Supabase.', 'Conectado a Supabase. Crea un grupo o unete con un codigo.');
     } catch (error) {
       setAuthBootstrapping(false);
       setSyncMode('local');
       const message = getFriendlyBackendError(error);
       setSyncMessage(message.includes('Inicia sesion') ? '' : message);
     }
-  }, [loadDefaultWorkspace]);
+  }, [openExistingRemoteWorkspace]);
 
   function getAuthCredentials() {
     const email = authForm.email.trim();
@@ -190,8 +211,7 @@ function App() {
   }
 
   async function openRemoteWorkspaceAfterAuth(message: string) {
-    await loadDefaultWorkspace(message);
-    setActiveView('library');
+    await openExistingRemoteWorkspace(message, 'Cuenta conectada. Crea un grupo o unete con un codigo.');
   }
 
   async function switchWorkspace(workspace: WorkspaceSummary) {
@@ -407,7 +427,7 @@ function App() {
     setAuthSubmitting('signIn');
     try {
       await signInWithPassword(credentials.email, credentials.password);
-      await openRemoteWorkspaceAfterAuth('Te uniste al grupo.');
+      await openRemoteWorkspaceAfterAuth('Sesion iniciada.');
     } catch (error) {
       setSyncMessage(getFriendlyAuthError(error, 'No se pudo iniciar sesion.'));
     } finally {
