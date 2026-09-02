@@ -1279,6 +1279,11 @@ textarea {
   top: 18px;
 }
 
+.preview-panel-header {
+  display: grid;
+  gap: 4px;
+}
+
 label {
   color: #43504c;
   display: grid;
@@ -1494,6 +1499,10 @@ label {
 .line-actions {
   display: grid;
   gap: 6px;
+}
+
+.line-live-preview {
+  display: none;
 }
 
 .chord-position-control {
@@ -1810,6 +1819,10 @@ label {
     padding: 14px;
   }
 
+  .editor-shell--song-form {
+    overflow: visible;
+  }
+
   .editor-header .toolbar {
     display: grid;
     gap: 8px;
@@ -2023,6 +2036,12 @@ label {
     grid-template-columns: 1fr;
   }
 
+  .editor-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
   .profile-card--hero,
   .profile-stat-grid {
     grid-template-columns: 1fr;
@@ -2036,6 +2055,31 @@ label {
 
   .song-detail--reader {
     min-height: auto;
+  }
+
+  .preview-panel--sticky {
+    align-self: stretch;
+    max-height: 34dvh;
+    order: -1;
+    overflow: auto;
+    position: sticky;
+    top: 48px;
+    z-index: 12;
+  }
+
+  .preview-panel-header {
+    background: #ffffff;
+    border-bottom: 1px solid #edf0ee;
+    margin: -14px -14px 10px;
+    padding: 12px 14px 10px;
+    position: sticky;
+    top: -14px;
+    z-index: 1;
+  }
+
+  .preview-panel .chord-preview {
+    font-size: 0.82rem;
+    max-height: none;
   }
 
   .detail-header .toolbar {
@@ -2263,6 +2307,21 @@ label {
   .line-actions .icon-button {
     flex: 1 1 0;
     min-width: 0;
+  }
+
+  .line-live-preview {
+    background: #fbfcfb;
+    border: 1px solid #edf0ee;
+    border-radius: 8px;
+    display: block;
+    padding: 10px;
+    width: 100%;
+  }
+
+  .line-live-preview .chord-preview {
+    font-size: 0.82rem;
+    overflow-x: auto;
+    padding-bottom: 2px;
   }
 
   .line-number {

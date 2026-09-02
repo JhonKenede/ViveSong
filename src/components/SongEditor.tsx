@@ -473,6 +473,9 @@ export function SongEditor({ song, onCancel, onSave }: SongEditorProps) {
                         <Trash2 size={16} />
                       </button>
                     </div>
+                    <div className="line-live-preview" aria-label={`Vista previa linea ${index + 1}`}>
+                      <ChordPreview source={editableLinesToChordPro([line])} />
+                    </div>
                   </div>
                 );
               })}
@@ -497,6 +500,10 @@ export function SongEditor({ song, onCancel, onSave }: SongEditorProps) {
         </section>
 
         <section className="preview-panel preview-panel--sticky" aria-label="Vista previa">
+          <div className="preview-panel-header">
+            <p className="eyebrow">Vista previa</p>
+            <h3>Resultado de la cancion</h3>
+          </div>
           <ChordPreview source={chordPro} />
         </section>
       </div>
