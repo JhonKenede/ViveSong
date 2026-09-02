@@ -1,0 +1,1163 @@
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  Archive,
+  ChevronRight,
+  Copy,
+  Download,
+  FileText,
+  Library,
+  ListMusic,
+  Mic2,
+  Moon,
+  Music2,
+  Plus,
+  Search,
+  Trash2,
+  Upload,
+  X,
+} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import './styles.css';
+import { ChordPreview } from './components/ChordPreview';
+import { SongEditor } from './components/SongEditor';
+import { CHROMATIC_KEYS, getSemitoneDistance } from './lib/chords';
+import { buildChordProExport, getChordProFileName } from './lib/exports';
+import { importSongFile, songInputFromText } from './lib/importSongs';
+import {
+  canArchiveSongs,
+  canDeleteSongs,
+  canEditSong,
+  canManageSongs,
+  canReadGroupResource,
+  defaultSession,
+  roleLabel,
+} from './lib/permissions';
+import {
+  addSongToSetlist,
+  createSetlist,
+  formatDuration,
+  getSetlistDurationSeconds,
+  moveSetlistItem,
+  removeSongFromSetlist,
+  setSetlistSongKey,
+} from './lib/setlists';
+import { archiveSong, createSong, duplicateSong, filterSongs, transposeSong, updateSong, type SongInput } from './lib/songs';
+import { loadSetlists, loadSongs, saveSetlists, saveSongs } from './lib/storage';
+import { isSupabaseConfigured } from './lib/supabaseClient';
+import {
+  deleteSongRemote,
+  ensureWorkspace,
+  fetchWorkspaceData,
+  joinWorkspaceByCode,
+  signInWithPassword,
+  signOut,
+  signUpWithPassword,
+  upsertSetlist,
+  upsertSong,
+} from './lib/supabaseRepository';
+import type { GroupRole, Setlist, Song, ViewMode } from './types';
+
+interface DuplicatePrompt {
+  message: string;
+  actionLabel: string;
+  inputs: SongInput[];
+}
+
+const navItems: Array<{ view: Exclude<ViewMode, 'song'>; label: string; icon: typeof Library }> = [
+  { view: 'library', label: 'Biblioteca', icon: Library },
+  { view: 'editor', label: 'Editor', icon: Music2 },
+  { view: 'setlists', label: 'Repertorios', icon: ListMusic },
+  { view: 'performance', label: 'Directo', icon: Mic2 },
+];
+
+const musicalKeys = CHROMATIC_KEYS;
+
+type SyncMode = 'local' | 'supabase';
+
+function App() {
+  const [songs, setSongs] = useState<Song[]>(() => loadSongs());
+  const [setlists, setSetlists] = useState<Setlist[]>(() => loadSetlists());
+  const [session, setSession] = useState(defaultSession);
+  const [activeView, setActiveView] = useState<ViewMode>('library');
+  const [selectedSongId, setSelectedSongId] = useState(songs[0]?.id ?? '');
+  const [editingSongId, setEditingSongId] = useState<string | undefined>();
+  const [draftSong, setDraftSong] = useState<Song | null>(null);
+  const [selectedSetlistId, setSelectedSetlistId] = useState(setlists[0]?.id ?? '');
+  const [performanceIndex, setPerformanceIndex] = useState(0);
+  const [performanceSemitones, setPerformanceSemitones] = useState(0);
+  const [songReaderSemitones, setSongReaderSemitones] = useState(0);
+  const [filters, setFilters] = useState({ query: '', key: '', artist: '', tag: '' });
+  const [importError, setImportError] = useState('');
+  const [duplicateWarning, setDuplicateWarning] = useState('');
+  const [duplicatePrompt, setDuplicatePrompt] = useState<DuplicatePrompt | null>(null);
+  const [songPendingDelete, setSongPendingDelete] = useState<Song | null>(null);
+  const [discardEditorRequested, setDiscardEditorRequested] = useState(false);
+  const [importPreview, setImportPreview] = useState<SongInput | null>(null);
+  const [pasteImportOpen, setPasteImportOpen] = useState(false);
+  const [pastedSongText, setPastedSongText] = useState('');
+  const [syncMode, setSyncMode] = useState<SyncMode>('local');
+  const [syncMessage, setSyncMessage] = useState('');
+  const [authForm, setAuthForm] = useState({ email: '', password: '', inviteCode: '' });
+  const [inviteCode, setInviteCode] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => saveSongs(songs), [songs]);
+  useEffect(() => saveSetlists(setlists), [setlists]);
+  useEffect(() => setSongReaderSemitones(0), [selectedSongId]);
+
+  const loadRemoteWorkspace = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    setSyncMessage('Conectando con Supabase...');
+    try {
+      const workspace = await ensureWorkspace('ViveSong');
+      const remoteData = await fetchWorkspaceData(workspace.groupId);
+      setSession({ userId: workspace.userId, groupId: workspace.groupId, role: workspace.role });
+      setInviteCode(workspace.inviteCode);
+      setSongs(remoteData.songs);
+      setSetlists(remoteData.setlists);
+      setSelectedSongId(remoteData.songs[0]?.id ?? '');
+      setSelectedSetlistId(remoteData.setlists[0]?.id ?? '');
+      setSyncMode('supabase');
+      setSyncMessage('Conectado a Supabase.');
+    } catch (error) {
+      setSyncMode('local');
+      setSyncMessage(error instanceof Error ? error.message : 'No se pudo conectar con Supabase.');
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadRemoteWorkspace();
+  }, [loadRemoteWorkspace]);
+
+  const visibleSongs = useMemo(
+    () => songs.filter((song) => canReadGroupResource(session, song.groupId) && !song.archivedAt),
+    [songs, session],
+  );
+  const visibleSetlists = useMemo(
+    () => setlists.filter((setlist) => canReadGroupResource(session, setlist.groupId)),
+    [setlists, session],
+  );
+  const selectedSong = visibleSongs.find((song) => song.id === selectedSongId) ?? visibleSongs[0];
+  const renderedSelectedSong = selectedSong ? transposeSong(selectedSong, songReaderSemitones) : undefined;
+  const editingSong = visibleSongs.find((song) => song.id === editingSongId);
+  const editorSong = editingSong ?? draftSong ?? undefined;
+  const selectedSetlist = visibleSetlists.find((setlist) => setlist.id === selectedSetlistId) ?? visibleSetlists[0];
+  const performanceSongs = selectedSetlist?.items
+    .map((item) => visibleSongs.find((song) => song.id === item.songId))
+    .filter(Boolean) as Song[];
+  const performanceSong = performanceSongs[performanceIndex] ?? visibleSongs[0];
+  const performanceItem = selectedSetlist?.items[performanceIndex];
+  const performanceKeyOffset =
+    performanceSong && performanceItem?.performanceKey ? getSemitoneDistance(performanceSong.key, performanceItem.performanceKey) : 0;
+  const renderedPerformanceSong = performanceSong
+    ? transposeSong(performanceSong, performanceKeyOffset + performanceSemitones)
+    : undefined;
+
+  const artists = [...new Set(visibleSongs.map((song) => song.artist))].sort();
+  const tags = [...new Set(visibleSongs.flatMap((song) => song.tags))].sort();
+  const filteredSongs = useMemo(() => filterSongs(visibleSongs, filters), [visibleSongs, filters]);
+
+  async function persistSong(song: Song) {
+    if (syncMode !== 'supabase') return;
+    try {
+      await upsertSong(song);
+      setSyncMessage('Cancion sincronizada.');
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? error.message : 'No se pudo sincronizar la cancion.');
+    }
+  }
+
+  async function persistSetlist(setlist: Setlist) {
+    if (syncMode !== 'supabase') return;
+    try {
+      await upsertSetlist(setlist);
+      setSyncMessage('Repertorio sincronizado.');
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? error.message : 'No se pudo sincronizar el repertorio.');
+    }
+  }
+
+  async function handleSignIn() {
+    try {
+      await signInWithPassword(authForm.email, authForm.password);
+      await loadRemoteWorkspace();
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? error.message : 'No se pudo iniciar sesion.');
+    }
+  }
+
+  async function handleSignUp() {
+    try {
+      await signUpWithPassword(authForm.email, authForm.password);
+      await signInWithPassword(authForm.email, authForm.password);
+      await loadRemoteWorkspace();
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? error.message : 'No se pudo crear la cuenta.');
+    }
+  }
+
+  async function handleJoinWorkspace() {
+    try {
+      const workspace = await joinWorkspaceByCode(authForm.inviteCode);
+      const remoteData = await fetchWorkspaceData(workspace.groupId);
+      setSession({ userId: workspace.userId, groupId: workspace.groupId, role: workspace.role });
+      setInviteCode(workspace.inviteCode);
+      setSongs(remoteData.songs);
+      setSetlists(remoteData.setlists);
+      setSelectedSongId(remoteData.songs[0]?.id ?? '');
+      setSelectedSetlistId(remoteData.setlists[0]?.id ?? '');
+      setSyncMode('supabase');
+      setSyncMessage('Te uniste al grupo.');
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? error.message : 'No se pudo unir al grupo.');
+    }
+  }
+
+  async function handleSignOut() {
+    try {
+      await signOut();
+      setSyncMode('local');
+      setInviteCode('');
+      setSession(defaultSession);
+      setSongs(loadSongs());
+      setSetlists(loadSetlists());
+      setSyncMessage('Sesion cerrada. Usando datos locales.');
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? error.message : 'No se pudo cerrar sesion.');
+    }
+  }
+
+  async function handleSaveSong(input: SongInput) {
+    if (!canManageSongs(session)) {
+      setDuplicateWarning('Tu rol actual solo permite consultar canciones.');
+      return;
+    }
+
+    const inputWithScope = { ...input, groupId: session.groupId, createdBy: session.userId };
+    const duplicate = findDuplicateSong(visibleSongs, inputWithScope, editingSong?.id);
+    if (duplicate) {
+      setDuplicateWarning('');
+      setDuplicatePrompt({
+        message: `Ya existe una cancion llamada "${duplicate.title}" de ${duplicate.artist}.`,
+        actionLabel: 'Crear version 2',
+        inputs: [{ ...inputWithScope, title: getVersionTitle(input.title, input.artist, visibleSongs) }],
+      });
+      return;
+    }
+
+    setDuplicateWarning('');
+    setDuplicatePrompt(null);
+    setDiscardEditorRequested(false);
+    setDraftSong(null);
+    if (editingSong) {
+      const saved = updateSong(editingSong, inputWithScope);
+      setSongs((current) => current.map((song) => (song.id === saved.id ? saved : song)));
+      setSelectedSongId(saved.id);
+      setActiveView('song');
+      await persistSong(saved);
+    } else {
+      const saved = createSong(inputWithScope);
+      setSongs((current) => [saved, ...current]);
+      setSelectedSongId(saved.id);
+      setActiveView('song');
+      await persistSong(saved);
+    }
+    setEditingSongId(undefined);
+  }
+
+  async function handleImportFiles(fileList: FileList | null) {
+    if (!canManageSongs(session)) {
+      setImportError('Tu rol actual solo permite consultar canciones.');
+      return;
+    }
+    const files = Array.from(fileList ?? []);
+    if (files.length === 0) return;
+
+    try {
+      setImportError('');
+      setDuplicateWarning('');
+      setDuplicatePrompt(null);
+      const importedInputs = await Promise.all(files.map((file) => importSongFile(file)));
+      const acceptedInputs: SongInput[] = [];
+      const duplicateInputs: SongInput[] = [];
+
+      for (const input of importedInputs) {
+        const inputWithScope = { ...input, groupId: session.groupId, createdBy: session.userId };
+        const duplicate = findDuplicateSongInputs(visibleSongs, acceptedInputs, inputWithScope);
+        if (duplicate) {
+          duplicateInputs.push({
+            ...inputWithScope,
+            title: getVersionTitle(input.title, input.artist, visibleSongs, acceptedInputs),
+          });
+        } else {
+          acceptedInputs.push(inputWithScope);
+        }
+      }
+
+      if (duplicateInputs.length > 0) {
+        setDuplicatePrompt({
+          message:
+            duplicateInputs.length === 1
+              ? `Ya existe esa cancion. Puedes importarla como "${duplicateInputs[0].title}".`
+              : `${duplicateInputs.length} canciones ya existen. Puedes importarlas como versiones nuevas.`,
+          actionLabel: duplicateInputs.length === 1 ? 'Importar version 2' : 'Importar versiones',
+          inputs: duplicateInputs,
+        });
+      }
+
+      if (acceptedInputs.length === 0) return;
+
+      setImportPreview(acceptedInputs[0]);
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : 'No se pudo importar el archivo.');
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  function openSong(songId: string) {
+    setDraftSong(null);
+    setSelectedSongId(songId);
+    setActiveView('song');
+  }
+
+  async function deleteSong(songId: string) {
+    if (!canDeleteSongs(session)) return;
+    setSongs((current) => current.filter((song) => song.id !== songId));
+    setSetlists((current) =>
+      current.map((setlist) => ({
+        ...setlist,
+        items: setlist.items.filter((item) => item.songId !== songId),
+      })),
+    );
+    setActiveView('library');
+    setSongPendingDelete(null);
+    if (syncMode === 'supabase') {
+      try {
+        await deleteSongRemote(songId);
+        setSyncMessage('Cancion eliminada en Supabase.');
+      } catch (error) {
+        setSyncMessage(error instanceof Error ? error.message : 'No se pudo borrar en Supabase.');
+      }
+    }
+  }
+
+  async function createNewSetlist() {
+    const setlist = createSetlist(
+      `Repertorio ${visibleSetlists.length + 1}`,
+      new Date().toISOString().slice(0, 10),
+      undefined,
+      session.groupId,
+    );
+    setSetlists((current) => [setlist, ...current]);
+    setSelectedSetlistId(setlist.id);
+    await persistSetlist(setlist);
+  }
+
+  function changeSongReaderKey(nextKey: SongInput['key']) {
+    if (!renderedSelectedSong) return;
+    setSongReaderSemitones((current) => current + getSemitoneDistance(renderedSelectedSong.key, nextKey));
+  }
+
+  function saveDuplicateVersions(inputs: SongInput[]) {
+    const versionDraft = createSong(inputs[0]);
+    setDraftSong(versionDraft);
+    setEditingSongId(undefined);
+    setActiveView('editor');
+    setDuplicatePrompt(null);
+    setDuplicateWarning('');
+  }
+
+  function openImportDraft(input: SongInput) {
+    const importedDraft = createSong({ ...input, groupId: session.groupId, createdBy: session.userId });
+    setDraftSong(importedDraft);
+    setEditingSongId(undefined);
+    setImportPreview(null);
+    setPasteImportOpen(false);
+    setPastedSongText('');
+    setActiveView('editor');
+  }
+
+  function importPastedSong() {
+    try {
+      const input = songInputFromText(pastedSongText, 'Cancion pegada');
+      const scopedInput = { ...input, groupId: session.groupId, createdBy: session.userId };
+      const duplicate = findDuplicateSong(visibleSongs, scopedInput);
+      setImportError('');
+      if (duplicate) {
+        setDuplicatePrompt({
+          message: `Ya existe esa cancion. Puedes importarla como "${getVersionTitle(input.title, input.artist, visibleSongs)}".`,
+          actionLabel: 'Importar version 2',
+          inputs: [{ ...scopedInput, title: getVersionTitle(input.title, input.artist, visibleSongs) }],
+        });
+        setPasteImportOpen(false);
+        return;
+      }
+      setImportPreview(scopedInput);
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : 'No se pudo interpretar el texto pegado.');
+    }
+  }
+
+  async function duplicateSelectedSong(song: Song) {
+    if (!canManageSongs(session)) return;
+    const copy = duplicateSong(song, getVersionTitle(song.title, song.artist, visibleSongs));
+    setSongs((current) => [copy, ...current]);
+    setSelectedSongId(copy.id);
+    setActiveView('song');
+    await persistSong(copy);
+  }
+
+  async function archiveSelectedSong(song: Song) {
+    if (!canArchiveSongs(session)) return;
+    const archivedSong = archiveSong(song);
+    setSongs((current) => current.map((candidate) => (candidate.id === song.id ? archivedSong : candidate)));
+    setSetlists((current) =>
+      current.map((setlist) => ({
+        ...setlist,
+        items: setlist.items.filter((item) => item.songId !== song.id),
+      })),
+    );
+    setActiveView('library');
+    await persistSong(archivedSong);
+  }
+
+  function exportSong(song: Song) {
+    const blob = new Blob([buildChordProExport(song)], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = getChordProFileName(song);
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function requestCloseEditor() {
+    setDiscardEditorRequested(true);
+  }
+
+  function discardEditorChanges() {
+    setDraftSong(null);
+    setEditingSongId(undefined);
+    setDuplicatePrompt(null);
+    setDuplicateWarning('');
+    setDiscardEditorRequested(false);
+    setActiveView('library');
+  }
+
+  const duplicateAlert = duplicatePrompt ? (
+    <div className="validation validation--warning duplicate-alert" role="alert">
+      <span>{duplicatePrompt.message}</span>
+      <button className="secondary-button" type="button" onClick={() => saveDuplicateVersions(duplicatePrompt.inputs)}>
+        {duplicatePrompt.actionLabel}
+      </button>
+      <button className="icon-button" type="button" onClick={() => setDuplicatePrompt(null)} aria-label="Cerrar alerta">
+        <X size={16} />
+      </button>
+    </div>
+  ) : duplicateWarning ? (
+    <div className="validation validation--warning" role="alert">
+      {duplicateWarning}
+    </div>
+  ) : null;
+
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand">
+          <div className="brand-mark">VS</div>
+          <div>
+            <strong>ViveSong</strong>
+            <span>Repertorios en vivo</span>
+          </div>
+        </div>
+        <nav aria-label="Principal">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeView === item.view || (activeView === 'song' && item.view === 'library');
+            return (
+              <button
+                className={isActive ? 'nav-button is-active' : 'nav-button'}
+                key={item.view}
+                onClick={() => setActiveView(item.view)}
+              >
+                <Icon size={18} /> {item.label}
+              </button>
+            );
+          })}
+        </nav>
+        <label className="role-switcher">
+          Rol local
+          <select
+            aria-label="Rol local"
+            value={session.role}
+            onChange={(event) => setSession((current) => ({ ...current, role: event.target.value as GroupRole }))}
+          >
+            {(['admin', 'editor', 'musician'] as GroupRole[]).map((role) => (
+              <option key={role} value={role}>
+                {roleLabel(role)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <section className="sync-panel" aria-label="Conexion de grupo">
+          <div>
+            <strong>{syncMode === 'supabase' ? 'Grupo conectado' : 'Modo local'}</strong>
+            <span>{syncMessage || 'Supabase listo para iniciar sesion.'}</span>
+          </div>
+          {isSupabaseConfigured ? (
+            syncMode === 'supabase' ? (
+              <>
+                <label>
+                  Codigo del grupo
+                  <input readOnly value={inviteCode} />
+                </label>
+                <button className="secondary-button" type="button" onClick={() => void loadRemoteWorkspace()}>
+                  Actualizar
+                </button>
+                <button className="secondary-button" type="button" onClick={() => void handleSignOut()}>
+                  Salir
+                </button>
+              </>
+            ) : (
+              <>
+                <label>
+                  Email
+                  <input
+                    value={authForm.email}
+                    onChange={(event) => setAuthForm((current) => ({ ...current, email: event.target.value }))}
+                    placeholder="tu@email.com"
+                  />
+                </label>
+                <label>
+                  Password
+                  <input
+                    type="password"
+                    value={authForm.password}
+                    onChange={(event) => setAuthForm((current) => ({ ...current, password: event.target.value }))}
+                    placeholder="Minimo 6 caracteres"
+                  />
+                </label>
+                <div className="sync-actions">
+                  <button className="secondary-button" type="button" onClick={() => void handleSignIn()}>
+                    Entrar
+                  </button>
+                  <button className="secondary-button" type="button" onClick={() => void handleSignUp()}>
+                    Crear cuenta
+                  </button>
+                </div>
+                <label>
+                  Codigo de grupo
+                  <input
+                    value={authForm.inviteCode}
+                    onChange={(event) => setAuthForm((current) => ({ ...current, inviteCode: event.target.value }))}
+                    placeholder="Opcional"
+                  />
+                </label>
+                <button className="secondary-button" type="button" onClick={() => void handleJoinWorkspace()}>
+                  Unirme al grupo
+                </button>
+              </>
+            )
+          ) : (
+            <span>Configura `.env.local` para conectar Supabase.</span>
+          )}
+        </section>
+        <div className="sidebar-summary">
+          <span>{visibleSongs.length} canciones</span>
+          <span>{visibleSetlists.length} repertorios</span>
+        </div>
+      </aside>
+
+      <main>
+        {activeView === 'library' ? (
+          <section className="workspace">
+            <div className="workspace-header">
+              <div>
+                <p className="eyebrow">Biblioteca</p>
+                <h1>Selecciona una cancion</h1>
+              </div>
+              <div className="toolbar">
+                <input
+                  ref={fileInputRef}
+                  className="visually-hidden"
+                  type="file"
+                  multiple
+                  accept=".txt,.cho,.chordpro,.pro,.pdf,text/plain,application/pdf"
+                  onChange={(event) => void handleImportFiles(event.target.files)}
+                />
+                <button className="secondary-button" disabled={!canManageSongs(session)} onClick={() => setPasteImportOpen(true)}>
+                  <FileText size={18} /> Pegar texto
+                </button>
+                <button className="secondary-button" disabled={!canManageSongs(session)} onClick={() => fileInputRef.current?.click()}>
+                  <Upload size={18} /> Importar cancion
+                </button>
+                <button
+                  className="primary-button"
+                  disabled={!canManageSongs(session)}
+                  onClick={() => {
+                    setEditingSongId(undefined);
+                    setDraftSong(null);
+                    setActiveView('editor');
+                  }}
+                >
+                  <Plus size={18} /> Nueva cancion
+                </button>
+              </div>
+            </div>
+
+            {!canManageSongs(session) ? (
+              <div className="validation validation--warning" role="status">
+                Estas en modo Musico: puedes consultar y transponer en tu vista, pero no modificar canciones.
+              </div>
+            ) : null}
+
+            {importError ? (
+              <div className="validation" role="alert">
+                {importError}
+              </div>
+            ) : null}
+
+            {duplicateAlert}
+
+            <div className="filters">
+              <label className="search-box">
+                <Search size={18} />
+                <input
+                  aria-label="Buscar canciones"
+                  placeholder="Buscar por titulo, artista, etiqueta o letra"
+                  value={filters.query}
+                  onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))}
+                />
+              </label>
+              <select
+                aria-label="Filtrar por artista"
+                value={filters.artist}
+                onChange={(event) => setFilters((current) => ({ ...current, artist: event.target.value }))}
+              >
+                <option value="">Todos los artistas</option>
+                {artists.map((artist) => (
+                  <option key={artist}>{artist}</option>
+                ))}
+              </select>
+              <select
+                aria-label="Filtrar por tonalidad"
+                value={filters.key}
+                onChange={(event) => setFilters((current) => ({ ...current, key: event.target.value }))}
+              >
+                <option value="">Todas las tonalidades</option>
+                {musicalKeys.map((key) => (
+                  <option key={key}>{key}</option>
+                ))}
+              </select>
+              <select
+                aria-label="Filtrar por etiqueta"
+                value={filters.tag}
+                onChange={(event) => setFilters((current) => ({ ...current, tag: event.target.value }))}
+              >
+                <option value="">Todas las etiquetas</option>
+                {tags.map((tag) => (
+                  <option key={tag}>{tag}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="library-only-layout">
+              <div className="song-table" role="list" aria-label="Listado de canciones">
+                <div className="song-table-header" aria-hidden="true">
+                  <span>Cancion</span>
+                  <span>Tono</span>
+                  <span>Tempo</span>
+                  <span>Etiquetas</span>
+                  <span>Duracion</span>
+                  <span />
+                </div>
+                {filteredSongs.map((song) => (
+                  <button className="song-table-row" key={song.id} onClick={() => openSong(song.id)}>
+                    <span className="song-title-cell">
+                      <strong>{song.title}</strong>
+                      <small>{song.artist}</small>
+                    </span>
+                    <span className="key-pill">{song.key}</span>
+                    <span className="song-tempo-cell">{song.tempo} BPM</span>
+                    <span className="song-tags-cell">
+                      {song.tags.slice(0, 3).map((tag) => (
+                        <span key={tag}>{tag}</span>
+                      ))}
+                    </span>
+                    <span className="song-duration-cell">{formatDuration(song.durationSeconds)}</span>
+                    <ChevronRight size={18} className="row-chevron" />
+                  </button>
+                ))}
+                {filteredSongs.length === 0 ? <div className="empty-state">No hay canciones visibles con estos filtros.</div> : null}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {activeView === 'song' && selectedSong && renderedSelectedSong ? (
+          <section className="workspace">
+            <article className="song-detail song-detail--reader">
+              <div className="song-reader-header">
+                <div className="song-reader-title">
+                  <button className="secondary-button back-button" onClick={() => setActiveView('library')}>
+                    <ArrowLeft size={18} /> Biblioteca
+                  </button>
+                  <p className="eyebrow">{selectedSong.artist}</p>
+                  <h1>{selectedSong.title}</h1>
+                  <div className="meta-strip">
+                    <span>{renderedSelectedSong.key}</span>
+                    <span>{selectedSong.tempo} BPM</span>
+                    <span>{selectedSong.timeSignature}</span>
+                    <span>{formatDuration(selectedSong.durationSeconds)}</span>
+                  </div>
+                </div>
+                <div className="song-reader-actions">
+                  <div className="transpose-control transpose-control--compact" aria-label="Cambiar tono">
+                    <span>Cambiar tono</span>
+                    <button
+                      className="icon-button"
+                      type="button"
+                      onClick={() => setSongReaderSemitones((value) => value - 1)}
+                      aria-label="Bajar tono"
+                    >
+                      -
+                    </button>
+                    <select
+                      aria-label="Cambiar tono de la cancion"
+                      value={renderedSelectedSong.key}
+                      onChange={(event) => changeSongReaderKey(event.target.value as SongInput['key'])}
+                    >
+                      {musicalKeys.map((key) => (
+                        <option key={key}>{key}</option>
+                      ))}
+                    </select>
+                    <button
+                      className="icon-button"
+                      type="button"
+                      onClick={() => setSongReaderSemitones((value) => value + 1)}
+                      aria-label="Subir tono"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <button className="secondary-button" onClick={() => setSongReaderSemitones(0)}>
+                    Reiniciar tono
+                  </button>
+                  <button className="secondary-button" onClick={() => exportSong(selectedSong)}>
+                    <Download size={17} /> Exportar
+                  </button>
+                  <button className="secondary-button" disabled={!canManageSongs(session)} onClick={() => duplicateSelectedSong(selectedSong)}>
+                    <Copy size={17} /> Duplicar
+                  </button>
+                  <button
+                    className="secondary-button"
+                    disabled={!canEditSong(session, selectedSong)}
+                    onClick={() => {
+                      setEditingSongId(selectedSong.id);
+                      setActiveView('editor');
+                    }}
+                  >
+                    Editar
+                  </button>
+                  <button
+                    className="secondary-button"
+                    disabled={!canArchiveSongs(session)}
+                    onClick={() => archiveSelectedSong(selectedSong)}
+                  >
+                    <Archive size={17} /> Archivar
+                  </button>
+                  <button
+                    className="icon-button danger"
+                    disabled={!canDeleteSongs(session)}
+                    aria-label="Eliminar cancion"
+                    title="Eliminar"
+                    onClick={() => setSongPendingDelete(selectedSong)}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </div>
+              <div className="song-reader-content">
+                <div className="tag-list">
+                  {selectedSong.tags.map((tag) => (
+                    <span key={tag}>{tag}</span>
+                  ))}
+                </div>
+                {selectedSong.notes.trim() ? <p className="song-notes">{selectedSong.notes}</p> : null}
+                <ChordPreview source={renderedSelectedSong.chordPro} />
+              </div>
+            </article>
+          </section>
+        ) : null}
+
+        {activeView === 'editor' ? (
+          <>
+            {duplicateAlert ? <div className="editor-alert">{duplicateAlert}</div> : null}
+            <SongEditor
+              key={editorSong?.id ?? 'new-song'}
+              song={editorSong}
+              onCancel={requestCloseEditor}
+              onSave={handleSaveSong}
+            />
+          </>
+        ) : null}
+
+        {activeView === 'setlists' ? (
+          <section className="workspace">
+            <div className="workspace-header">
+              <div>
+                <p className="eyebrow">Repertorios</p>
+                <h1>Ordena el servicio antes de salir al escenario</h1>
+              </div>
+              <button className="primary-button" onClick={createNewSetlist}>
+                <Plus size={18} /> Nuevo repertorio
+              </button>
+            </div>
+
+            <div className="setlist-layout">
+              <div className="song-list">
+                {visibleSetlists.map((setlist) => (
+                  <button
+                    className={selectedSetlist?.id === setlist.id ? 'song-row is-selected' : 'song-row'}
+                    key={setlist.id}
+                    onClick={() => setSelectedSetlistId(setlist.id)}
+                  >
+                    <span>
+                      <strong>{setlist.name}</strong>
+                      <small>{setlist.date}</small>
+                    </span>
+                      <span className="song-meta">{formatDuration(getSetlistDurationSeconds(setlist, visibleSongs))}</span>
+                  </button>
+                ))}
+              </div>
+
+              {selectedSetlist ? (
+                <article className="song-detail">
+                  <div className="detail-header">
+                    <div>
+                      <p className="eyebrow">{selectedSetlist.date}</p>
+                      <h2>{selectedSetlist.name}</h2>
+                      <div className="meta-strip">
+                        <span>{selectedSetlist.items.length} canciones</span>
+                        <span>{formatDuration(getSetlistDurationSeconds(selectedSetlist, visibleSongs))}</span>
+                      </div>
+                    </div>
+                    <button
+                      className="secondary-button"
+                      onClick={() => {
+                        setPerformanceIndex(0);
+                        setActiveView('performance');
+                      }}
+                    >
+                      Abrir directo
+                    </button>
+                  </div>
+
+                  <div className="setlist-builder">
+                    <div>
+                      <h3>Canciones disponibles</h3>
+                      {visibleSongs.map((song) => (
+                        <button
+                          key={song.id}
+                          className="compact-row"
+                          onClick={() => {
+                            const updatedSetlist = addSongToSetlist(selectedSetlist, song.id);
+                            setSetlists((current) =>
+                              current.map((setlist) => (setlist.id === selectedSetlist.id ? updatedSetlist : setlist)),
+                            );
+                            void persistSetlist(updatedSetlist);
+                          }}
+                        >
+                          <Plus size={16} /> {song.title}
+                        </button>
+                      ))}
+                    </div>
+                    <div>
+                      <h3>Orden del repertorio</h3>
+                      {selectedSetlist.items.map((item, index) => {
+                        const song = visibleSongs.find((candidate) => candidate.id === item.songId);
+                        if (!song) return null;
+                        return (
+                          <div className="setlist-item" key={item.songId}>
+                            <span>
+                              {index + 1}. {song.title}
+                              <small>{item.notes}</small>
+                            </span>
+                            <div className="toolbar">
+                              <select
+                                aria-label={`Tono de ${song.title} en repertorio`}
+                                value={item.performanceKey ?? song.key}
+                                onChange={(event) => {
+                                  const updatedSetlist = setSetlistSongKey(
+                                    selectedSetlist,
+                                    song.id,
+                                    event.target.value as SongInput['key'],
+                                  );
+                                  setSetlists((current) =>
+                                    current.map((setlist) =>
+                                      setlist.id === selectedSetlist.id ? updatedSetlist : setlist,
+                                    ),
+                                  );
+                                  void persistSetlist(updatedSetlist);
+                                }}
+                              >
+                                {musicalKeys.map((key) => (
+                                  <option key={key}>{key}</option>
+                                ))}
+                              </select>
+                              <button
+                                className="icon-button"
+                                aria-label="Subir cancion"
+                                title="Subir"
+                                onClick={() => {
+                                  const updatedSetlist = moveSetlistItem(selectedSetlist, index, index - 1);
+                                  setSetlists((current) =>
+                                    current.map((setlist) =>
+                                      setlist.id === selectedSetlist.id ? updatedSetlist : setlist,
+                                    ),
+                                  );
+                                  void persistSetlist(updatedSetlist);
+                                }}
+                              >
+                                <ArrowUp size={16} />
+                              </button>
+                              <button
+                                className="icon-button"
+                                aria-label="Bajar cancion"
+                                title="Bajar"
+                                onClick={() => {
+                                  const updatedSetlist = moveSetlistItem(selectedSetlist, index, index + 1);
+                                  setSetlists((current) =>
+                                    current.map((setlist) =>
+                                      setlist.id === selectedSetlist.id ? updatedSetlist : setlist,
+                                    ),
+                                  );
+                                  void persistSetlist(updatedSetlist);
+                                }}
+                              >
+                                <ArrowDown size={16} />
+                              </button>
+                              <button
+                                className="icon-button danger"
+                                aria-label="Quitar cancion"
+                                title="Quitar"
+                                onClick={() => {
+                                  const updatedSetlist = removeSongFromSetlist(selectedSetlist, song.id);
+                                  setSetlists((current) =>
+                                    current.map((setlist) =>
+                                      setlist.id === selectedSetlist.id ? updatedSetlist : setlist,
+                                    ),
+                                  );
+                                  void persistSetlist(updatedSetlist);
+                                }}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </article>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+
+        {activeView === 'performance' && renderedPerformanceSong ? (
+          <section className="performance-view">
+            <div className="performance-topbar">
+              <button className="secondary-button" onClick={() => setActiveView('setlists')}>
+                <ArrowLeft size={18} /> Repertorios
+              </button>
+              <div>
+                <p>{selectedSetlist?.name ?? 'Biblioteca'}</p>
+                <h1>{renderedPerformanceSong.title}</h1>
+              </div>
+              <div className="toolbar">
+                <button
+                  className="icon-button"
+                  aria-label="Bajar tono"
+                  title="Bajar tono"
+                  onClick={() => setPerformanceSemitones((value) => value - 1)}
+                >
+                  -
+                </button>
+                <span className="transpose-badge">{renderedPerformanceSong.key}</span>
+                <button
+                  className="icon-button"
+                  aria-label="Subir tono"
+                  title="Subir tono"
+                  onClick={() => setPerformanceSemitones((value) => value + 1)}
+                >
+                  +
+                </button>
+                <Moon size={18} />
+              </div>
+            </div>
+            <ChordPreview source={renderedPerformanceSong.chordPro} large />
+            <div className="performance-footer">
+              <button
+                className="secondary-button"
+                disabled={performanceIndex === 0}
+                onClick={() => setPerformanceIndex((index) => Math.max(0, index - 1))}
+              >
+                <ArrowLeft size={18} /> Anterior
+              </button>
+              <span>
+                {performanceIndex + 1} / {Math.max(performanceSongs.length, 1)}
+              </span>
+              <button
+                className="secondary-button"
+                disabled={performanceIndex >= performanceSongs.length - 1}
+                onClick={() => setPerformanceIndex((index) => Math.min(performanceSongs.length - 1, index + 1))}
+              >
+                Siguiente <ArrowRight size={18} />
+              </button>
+            </div>
+          </section>
+        ) : null}
+      </main>
+
+      {songPendingDelete ? (
+        <div className="modal-backdrop" role="presentation">
+          <section className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-song-title">
+            <div>
+              <p className="eyebrow">Confirmar borrado</p>
+              <h2 id="delete-song-title">Eliminar cancion</h2>
+            </div>
+            <p>
+              Vas a borrar <strong>{songPendingDelete.title}</strong>. Esta accion tambien la quitara de los repertorios.
+            </p>
+            <div className="toolbar confirm-actions">
+              <button className="secondary-button" onClick={() => setSongPendingDelete(null)}>
+                Cancelar
+              </button>
+              <button className="danger-button" onClick={() => deleteSong(songPendingDelete.id)}>
+                Eliminar
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {discardEditorRequested ? (
+        <div className="modal-backdrop" role="presentation">
+          <section className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="discard-editor-title">
+            <div>
+              <p className="eyebrow">Cambios sin guardar</p>
+              <h2 id="discard-editor-title">Descartar cambios</h2>
+            </div>
+            <p>Si sales ahora, los cambios no guardados se perderan. La cancion solo se guardara cuando pulses Guardar.</p>
+            <div className="toolbar confirm-actions">
+              <button className="secondary-button" onClick={() => setDiscardEditorRequested(false)}>
+                Cancelar
+              </button>
+              <button className="danger-button" onClick={discardEditorChanges}>
+                Descartar
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {pasteImportOpen ? (
+        <div className="modal-backdrop" role="presentation">
+          <section className="confirm-dialog import-dialog" role="dialog" aria-modal="true" aria-labelledby="paste-import-title">
+            <div>
+              <p className="eyebrow">Importar cancion</p>
+              <h2 id="paste-import-title">Pegar letra o ChordPro</h2>
+            </div>
+            <textarea
+              aria-label="Texto de la cancion"
+              value={pastedSongText}
+              onChange={(event) => setPastedSongText(event.target.value)}
+              placeholder="{title: Gracia sublime}\n{artist: Equipo}\n{key: G}\n\n[G]Sublime gracia del [C]Senor"
+            />
+            <div className="toolbar confirm-actions">
+              <button className="secondary-button" onClick={() => setPasteImportOpen(false)}>
+                Cancelar
+              </button>
+              <button className="primary-button" onClick={importPastedSong}>
+                Previsualizar
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {importPreview ? (
+        <div className="modal-backdrop" role="presentation">
+          <section className="confirm-dialog import-dialog" role="dialog" aria-modal="true" aria-labelledby="import-preview-title">
+            <div>
+              <p className="eyebrow">Vista previa</p>
+              <h2 id="import-preview-title">{importPreview.title}</h2>
+            </div>
+            <div className="import-summary">
+              <span>{importPreview.artist}</span>
+              <span>{importPreview.key}</span>
+              <span>{importPreview.tempo} BPM</span>
+            </div>
+            <div className="import-preview-box">
+              <ChordPreview source={importPreview.chordPro} />
+            </div>
+            <div className="toolbar confirm-actions">
+              <button className="secondary-button" onClick={() => setImportPreview(null)}>
+                Cancelar
+              </button>
+              <button className="primary-button" onClick={() => openImportDraft(importPreview)}>
+                Abrir en editor
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export default App;
+
+function findDuplicateSong(songs: Song[], input: SongInput, ignoreSongId?: string): Song | undefined {
+  const nextIdentity = getSongIdentity(input.title, input.artist);
+  return songs.find((song) => song.id !== ignoreSongId && getSongIdentity(song.title, song.artist) === nextIdentity);
+}
+
+function findDuplicateSongInputs(songs: Song[], acceptedInputs: SongInput[], input: SongInput): boolean {
+  const nextIdentity = getSongIdentity(input.title, input.artist);
+  return (
+    songs.some((song) => getSongIdentity(song.title, song.artist) === nextIdentity) ||
+    acceptedInputs.some((accepted) => getSongIdentity(accepted.title, accepted.artist) === nextIdentity)
+  );
+}
+
+function getVersionTitle(title: string, artist: string, songs: Song[], acceptedInputs: SongInput[] = []): string {
+  let version = 2;
+  let candidate = `${title} Version ${version}`;
+  while (
+    songs.some((song) => getSongIdentity(song.title, song.artist) === getSongIdentity(candidate, artist)) ||
+    acceptedInputs.some((input) => getSongIdentity(input.title, input.artist) === getSongIdentity(candidate, artist))
+  ) {
+    version += 1;
+    candidate = `${title} Version ${version}`;
+  }
+  return candidate;
+}
+
+function getSongIdentity(title: string, artist: string): string {
+  return `${normalizeSongIdentityPart(title)}::${normalizeSongIdentityPart(artist)}`;
+}
+
+function normalizeSongIdentityPart(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
