@@ -10,6 +10,7 @@ import {
   FileText,
   Library,
   ListMusic,
+  LogIn,
   Mic2,
   Moon,
   Music2,
@@ -57,6 +58,7 @@ import {
   signUpWithPassword,
   upsertSetlist,
   upsertSong,
+  type WorkspaceSession,
 } from './lib/supabaseRepository';
 import type { GroupRole, Setlist, Song, ViewMode } from './types';
 
@@ -108,25 +110,30 @@ function App() {
   useEffect(() => saveSetlists(setlists), [setlists]);
   useEffect(() => setSongReaderSemitones(0), [selectedSongId]);
 
+  const activateRemoteWorkspace = useCallback(async (workspace: WorkspaceSession, message: string) => {
+    const remoteData = await fetchWorkspaceData(workspace.groupId);
+    setSession({ userId: workspace.userId, groupId: workspace.groupId, role: workspace.role });
+    setInviteCode(workspace.inviteCode);
+    setSongs(remoteData.songs);
+    setSetlists(remoteData.setlists);
+    setSelectedSongId(remoteData.songs[0]?.id ?? '');
+    setSelectedSetlistId(remoteData.setlists[0]?.id ?? '');
+    setSyncMode('supabase');
+    setSyncMessage(message);
+  }, []);
+
   const loadRemoteWorkspace = useCallback(async () => {
     if (!isSupabaseConfigured) return;
     setSyncMessage('Conectando con Supabase...');
     try {
       const workspace = await ensureWorkspace('ViveSong');
-      const remoteData = await fetchWorkspaceData(workspace.groupId);
-      setSession({ userId: workspace.userId, groupId: workspace.groupId, role: workspace.role });
-      setInviteCode(workspace.inviteCode);
-      setSongs(remoteData.songs);
-      setSetlists(remoteData.setlists);
-      setSelectedSongId(remoteData.songs[0]?.id ?? '');
-      setSelectedSetlistId(remoteData.setlists[0]?.id ?? '');
-      setSyncMode('supabase');
-      setSyncMessage('Conectado a Supabase.');
+      await activateRemoteWorkspace(workspace, 'Conectado a Supabase.');
     } catch (error) {
       setSyncMode('local');
-      setSyncMessage(error instanceof Error ? error.message : 'No se pudo conectar con Supabase.');
+      const message = error instanceof Error ? error.message : 'No se pudo conectar con Supabase.';
+      setSyncMessage(message.includes('Inicia sesion') ? '' : message);
     }
-  }, []);
+  }, [activateRemoteWorkspace]);
 
   useEffect(() => {
     void loadRemoteWorkspace();
@@ -183,7 +190,12 @@ function App() {
   async function handleSignIn() {
     try {
       await signInWithPassword(authForm.email, authForm.password);
-      await loadRemoteWorkspace();
+      const code = authForm.inviteCode.trim();
+      if (code) {
+        await activateRemoteWorkspace(await joinWorkspaceByCode(code), 'Te uniste al grupo.');
+      } else {
+        await loadRemoteWorkspace();
+      }
     } catch (error) {
       setSyncMessage(error instanceof Error ? error.message : 'No se pudo iniciar sesion.');
     }
@@ -193,26 +205,14 @@ function App() {
     try {
       await signUpWithPassword(authForm.email, authForm.password);
       await signInWithPassword(authForm.email, authForm.password);
-      await loadRemoteWorkspace();
+      const code = authForm.inviteCode.trim();
+      if (code) {
+        await activateRemoteWorkspace(await joinWorkspaceByCode(code), 'Cuenta creada y unida al grupo.');
+      } else {
+        await loadRemoteWorkspace();
+      }
     } catch (error) {
       setSyncMessage(error instanceof Error ? error.message : 'No se pudo crear la cuenta.');
-    }
-  }
-
-  async function handleJoinWorkspace() {
-    try {
-      const workspace = await joinWorkspaceByCode(authForm.inviteCode);
-      const remoteData = await fetchWorkspaceData(workspace.groupId);
-      setSession({ userId: workspace.userId, groupId: workspace.groupId, role: workspace.role });
-      setInviteCode(workspace.inviteCode);
-      setSongs(remoteData.songs);
-      setSetlists(remoteData.setlists);
-      setSelectedSongId(remoteData.songs[0]?.id ?? '');
-      setSelectedSetlistId(remoteData.setlists[0]?.id ?? '');
-      setSyncMode('supabase');
-      setSyncMessage('Te uniste al grupo.');
-    } catch (error) {
-      setSyncMessage(error instanceof Error ? error.message : 'No se pudo unir al grupo.');
     }
   }
 
@@ -464,6 +464,84 @@ function App() {
     </div>
   ) : null;
 
+  if (isSupabaseConfigured && syncMode !== 'supabase') {
+    return (
+      <main className="auth-screen">
+        <section className="auth-card" aria-labelledby="auth-title">
+          <div className="auth-brand">
+            <div className="brand-mark">VS</div>
+            <div>
+              <strong>ViveSong</strong>
+              <span>Repertorios en vivo</span>
+            </div>
+          </div>
+          <div className="auth-copy">
+            <p className="eyebrow">Acceso al grupo</p>
+            <h1 id="auth-title">Inicia sesion para continuar</h1>
+            <p>Entra con tu cuenta y, si te han invitado, pega el codigo del grupo antes de acceder.</p>
+          </div>
+
+          {syncMessage ? (
+            <div className="validation" role="alert">
+              {syncMessage}
+            </div>
+          ) : null}
+
+          <form
+            className="auth-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleSignIn();
+            }}
+          >
+            <label>
+              Correo electronico
+              <input
+                autoComplete="email"
+                inputMode="email"
+                required
+                type="email"
+                value={authForm.email}
+                onChange={(event) => setAuthForm((current) => ({ ...current, email: event.target.value }))}
+                placeholder="tu@email.com"
+              />
+            </label>
+            <label>
+              Contrasena
+              <input
+                autoComplete="current-password"
+                minLength={6}
+                required
+                type="password"
+                value={authForm.password}
+                onChange={(event) => setAuthForm((current) => ({ ...current, password: event.target.value }))}
+                placeholder="Minimo 6 caracteres"
+              />
+            </label>
+            <label>
+              Codigo de grupo
+              <input
+                autoComplete="off"
+                value={authForm.inviteCode}
+                onChange={(event) => setAuthForm((current) => ({ ...current, inviteCode: event.target.value }))}
+                placeholder="Opcional"
+              />
+            </label>
+            <div className="auth-actions">
+              <button className="primary-button" type="submit">
+                <LogIn size={18} /> Entrar
+              </button>
+              <button className="secondary-button" type="button" onClick={() => void handleSignUp()}>
+                Crear cuenta
+              </button>
+            </div>
+          </form>
+          <p className="auth-note">Tus canciones y repertorios se guardaran en Supabase para poder usarlos fuera de tu red local.</p>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -489,24 +567,26 @@ function App() {
             );
           })}
         </nav>
-        <label className="role-switcher">
-          Rol local
-          <select
-            aria-label="Rol local"
-            value={session.role}
-            onChange={(event) => setSession((current) => ({ ...current, role: event.target.value as GroupRole }))}
-          >
-            {(['admin', 'editor', 'musician'] as GroupRole[]).map((role) => (
-              <option key={role} value={role}>
-                {roleLabel(role)}
-              </option>
-            ))}
-          </select>
-        </label>
+        {syncMode === 'supabase' ? null : (
+          <label className="role-switcher">
+            Rol local
+            <select
+              aria-label="Rol local"
+              value={session.role}
+              onChange={(event) => setSession((current) => ({ ...current, role: event.target.value as GroupRole }))}
+            >
+              {(['admin', 'editor', 'musician'] as GroupRole[]).map((role) => (
+                <option key={role} value={role}>
+                  {roleLabel(role)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <section className="sync-panel" aria-label="Conexion de grupo">
           <div>
             <strong>{syncMode === 'supabase' ? 'Grupo conectado' : 'Modo local'}</strong>
-            <span>{syncMessage || 'Supabase listo para iniciar sesion.'}</span>
+            <span>{syncMode === 'supabase' ? `Rol: ${roleLabel(session.role)}` : syncMessage || 'Datos guardados en este equipo.'}</span>
           </div>
           {isSupabaseConfigured ? (
             syncMode === 'supabase' ? (
@@ -522,46 +602,7 @@ function App() {
                   Salir
                 </button>
               </>
-            ) : (
-              <>
-                <label>
-                  Email
-                  <input
-                    value={authForm.email}
-                    onChange={(event) => setAuthForm((current) => ({ ...current, email: event.target.value }))}
-                    placeholder="tu@email.com"
-                  />
-                </label>
-                <label>
-                  Password
-                  <input
-                    type="password"
-                    value={authForm.password}
-                    onChange={(event) => setAuthForm((current) => ({ ...current, password: event.target.value }))}
-                    placeholder="Minimo 6 caracteres"
-                  />
-                </label>
-                <div className="sync-actions">
-                  <button className="secondary-button" type="button" onClick={() => void handleSignIn()}>
-                    Entrar
-                  </button>
-                  <button className="secondary-button" type="button" onClick={() => void handleSignUp()}>
-                    Crear cuenta
-                  </button>
-                </div>
-                <label>
-                  Codigo de grupo
-                  <input
-                    value={authForm.inviteCode}
-                    onChange={(event) => setAuthForm((current) => ({ ...current, inviteCode: event.target.value }))}
-                    placeholder="Opcional"
-                  />
-                </label>
-                <button className="secondary-button" type="button" onClick={() => void handleJoinWorkspace()}>
-                  Unirme al grupo
-                </button>
-              </>
-            )
+            ) : null
           ) : (
             <span>Configura `.env.local` para conectar Supabase.</span>
           )}
@@ -681,8 +722,12 @@ function App() {
                       <strong>{song.title}</strong>
                       <small>{song.artist}</small>
                     </span>
-                    <span className="key-pill">{song.key}</span>
-                    <span className="song-tempo-cell">{song.tempo} BPM</span>
+                    <span className="key-pill" translate="no">
+                      {song.key}
+                    </span>
+                    <span className="song-tempo-cell" translate="no">
+                      {song.tempo} BPM
+                    </span>
                     <span className="song-tags-cell">
                       {song.tags.slice(0, 3).map((tag) => (
                         <span key={tag}>{tag}</span>
@@ -709,9 +754,9 @@ function App() {
                   <p className="eyebrow">{selectedSong.artist}</p>
                   <h1>{selectedSong.title}</h1>
                   <div className="meta-strip">
-                    <span>{renderedSelectedSong.key}</span>
-                    <span>{selectedSong.tempo} BPM</span>
-                    <span>{selectedSong.timeSignature}</span>
+                    <span translate="no">{renderedSelectedSong.key}</span>
+                    <span translate="no">{selectedSong.tempo} BPM</span>
+                    <span translate="no">{selectedSong.timeSignature}</span>
                     <span>{formatDuration(selectedSong.durationSeconds)}</span>
                   </div>
                 </div>
@@ -728,6 +773,7 @@ function App() {
                     </button>
                     <select
                       aria-label="Cambiar tono de la cancion"
+                      translate="no"
                       value={renderedSelectedSong.key}
                       onChange={(event) => changeSongReaderKey(event.target.value as SongInput['key'])}
                     >
@@ -988,7 +1034,9 @@ function App() {
                 >
                   -
                 </button>
-                <span className="transpose-badge">{renderedPerformanceSong.key}</span>
+                <span className="transpose-badge" translate="no">
+                  {renderedPerformanceSong.key}
+                </span>
                 <button
                   className="icon-button"
                   aria-label="Subir tono"
@@ -1100,8 +1148,8 @@ function App() {
             </div>
             <div className="import-summary">
               <span>{importPreview.artist}</span>
-              <span>{importPreview.key}</span>
-              <span>{importPreview.tempo} BPM</span>
+              <span translate="no">{importPreview.key}</span>
+              <span translate="no">{importPreview.tempo} BPM</span>
             </div>
             <div className="import-preview-box">
               <ChordPreview source={importPreview.chordPro} />

@@ -1,7 +1,7 @@
 import type { GroupRole, MusicalKey, Setlist, SetlistItem, Song, UserSession } from '../types';
 import { supabase } from './supabaseClient';
 
-interface WorkspaceSession extends UserSession {
+export interface WorkspaceSession extends UserSession {
   inviteCode: string;
 }
 

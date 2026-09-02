@@ -10,7 +10,7 @@ export function ChordPreview({ source, large = false }: ChordPreviewProps) {
   const blocks = mergeConsecutiveInstrumentalBlocks(parseChordPro(source));
 
   return (
-    <div className={large ? 'chord-preview chord-preview--large' : 'chord-preview'}>
+    <div className={large ? 'chord-preview chord-preview--large' : 'chord-preview'} translate="no">
       {blocks.map((block, index) => {
         if (block.kind === 'directive') {
           if (!['section', 'comment'].includes(block.name)) return null;
