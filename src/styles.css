@@ -186,6 +186,56 @@ nav {
   min-width: 0;
 }
 
+.group-nav {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.group-nav > span {
+  color: #7f918a;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.group-nav > div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.group-nav-button {
+  background: transparent;
+  border: 1px solid #2f3d3a;
+  border-radius: 8px;
+  color: #cdd8d3;
+  display: grid;
+  gap: 2px;
+  min-height: 48px;
+  min-width: 0;
+  padding: 9px 11px;
+  text-align: left;
+}
+
+.group-nav-button.is-active {
+  background: #203029;
+  border-color: #385449;
+  color: #ffffff;
+}
+
+.group-nav-button strong,
+.group-nav-button small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-nav-button small {
+  color: #a9b7b0;
+  font-size: 0.78rem;
+}
+
 .nav-button,
 .primary-button,
 .secondary-button,
@@ -274,6 +324,16 @@ nav {
 
 .sync-panel .secondary-button svg {
   flex: 0 0 auto;
+}
+
+.sync-status {
+  background: #203029;
+  border: 1px solid #385449;
+  border-radius: 8px;
+  color: #d8e8df;
+  font-size: 0.78rem;
+  margin: 0;
+  padding: 8px 10px;
 }
 
 .sync-panel--mobile {
@@ -1212,6 +1272,20 @@ label {
     width: 100%;
   }
 
+  .group-nav {
+    width: 100%;
+  }
+
+  .group-nav > div {
+    display: flex;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .group-nav-button {
+    flex: 0 0 168px;
+  }
+
   .sidebar-summary {
     display: none;
   }
@@ -1344,6 +1418,20 @@ label {
     gap: 6px;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     overflow: visible;
+  }
+
+  .group-nav {
+    gap: 6px;
+  }
+
+  .group-nav > span {
+    display: none;
+  }
+
+  .group-nav-button {
+    flex-basis: 148px;
+    min-height: 42px;
+    padding: 8px 10px;
   }
 
   .nav-button {

@@ -746,6 +746,24 @@ function App() {
             );
           })}
         </nav>
+        {syncMode === 'supabase' && workspaces.length > 0 ? (
+          <section className="group-nav" aria-label="Grupos compartidos">
+            <span>Grupos</span>
+            <div>
+              {workspaces.map((workspace) => (
+                <button
+                  className={workspace.groupId === session.groupId ? 'group-nav-button is-active' : 'group-nav-button'}
+                  key={workspace.groupId}
+                  type="button"
+                  onClick={() => void switchWorkspace(workspace)}
+                >
+                  <strong>{workspace.name}</strong>
+                  <small>{roleLabel(workspace.role)}</small>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
         {syncMode === 'supabase' ? null : (
           <label className="role-switcher">
             Rol local
@@ -767,6 +785,7 @@ function App() {
             <strong>{syncMode === 'supabase' ? activeWorkspace?.name ?? 'Grupo conectado' : 'Modo local'}</strong>
             <span>{syncMode === 'supabase' ? `Rol: ${roleLabel(session.role)}` : syncMessage || 'Datos guardados en este equipo.'}</span>
           </div>
+          {syncMode === 'supabase' && syncMessage ? <p className="sync-status">{syncMessage}</p> : null}
           {isSupabaseConfigured ? (
             syncMode === 'supabase' ? (
               <>
@@ -821,6 +840,7 @@ function App() {
               <code translate="no">{inviteCode}</code>
             </summary>
             <div className="mobile-group-body">
+              {syncMessage ? <p className="sync-status">{syncMessage}</p> : null}
               <label>
                 Crear grupo
                 <input
