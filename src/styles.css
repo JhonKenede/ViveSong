@@ -322,8 +322,14 @@ nav {
   width: 100%;
 }
 
-.sync-panel .secondary-button svg {
+.sync-panel .secondary-button svg,
+.sync-panel .danger-button svg {
   flex: 0 0 auto;
+}
+
+.sync-panel .danger-button {
+  min-height: 36px;
+  width: 100%;
 }
 
 .sync-status {

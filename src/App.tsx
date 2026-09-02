@@ -50,6 +50,7 @@ import { loadSetlists, loadSongs, saveSetlists, saveSongs } from './lib/storage'
 import { isSupabaseConfigured } from './lib/supabaseClient';
 import {
   createWorkspace,
+  deleteWorkspace,
   deleteSongRemote,
   ensureWorkspace,
   fetchWorkspaceData,
@@ -101,6 +102,7 @@ function App() {
   const [duplicateWarning, setDuplicateWarning] = useState('');
   const [duplicatePrompt, setDuplicatePrompt] = useState<DuplicatePrompt | null>(null);
   const [songPendingDelete, setSongPendingDelete] = useState<Song | null>(null);
+  const [groupPendingDelete, setGroupPendingDelete] = useState<WorkspaceSummary | null>(null);
   const [discardEditorRequested, setDiscardEditorRequested] = useState(false);
   const [importPreview, setImportPreview] = useState<SongInput | null>(null);
   const [pasteImportOpen, setPasteImportOpen] = useState(false);
@@ -230,6 +232,42 @@ function App() {
     }
   }
 
+  async function handleDeleteWorkspace() {
+    if (!groupPendingDelete) return;
+    if (groupPendingDelete.role !== 'admin') {
+      setSyncMessage('Solo un administrador puede eliminar este grupo.');
+      setGroupPendingDelete(null);
+      return;
+    }
+
+    try {
+      await deleteWorkspace(groupPendingDelete.groupId);
+      const remainingWorkspaces = await listUserWorkspaces();
+      setWorkspaces(remainingWorkspaces);
+      setGroupPendingDelete(null);
+
+      const nextWorkspace = remainingWorkspaces[0];
+      if (nextWorkspace) {
+        await activateRemoteWorkspace(nextWorkspace, `Grupo eliminado: ${groupPendingDelete.name}.`);
+        setActiveView('library');
+        return;
+      }
+
+      setSession({ userId: session.userId, groupId: '', role: 'musician' });
+      setInviteCode('');
+      setSongs([]);
+      setSetlists([]);
+      setSelectedSongId('');
+      setSelectedSetlistId('');
+      setSyncMode('supabase');
+      setSyncMessage('Grupo eliminado. Crea un grupo o unete a uno para compartir canciones.');
+      setActiveView('library');
+    } catch (error) {
+      setGroupPendingDelete(null);
+      setSyncMessage(getFriendlyBackendError(error));
+    }
+  }
+
   function getErrorMessage(error: unknown) {
     if (error instanceof Error) return error.message;
     if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') return error.message;
@@ -272,6 +310,7 @@ function App() {
     if (
       message.includes('ensure_default_group') ||
       message.includes('create_group') ||
+      message.includes('delete_group') ||
       message.includes('schema cache') ||
       message.includes('pgrst202')
     ) {
@@ -782,7 +821,7 @@ function App() {
         )}
         <section className="sync-panel sync-panel--desktop" aria-label="Conexion de grupo">
           <div>
-            <strong>{syncMode === 'supabase' ? activeWorkspace?.name ?? 'Grupo conectado' : 'Modo local'}</strong>
+            <strong>{syncMode === 'supabase' ? activeWorkspace?.name ?? 'Sin grupo activo' : 'Modo local'}</strong>
             <span>{syncMode === 'supabase' ? `Rol: ${roleLabel(session.role)}` : syncMessage || 'Datos guardados en este equipo.'}</span>
           </div>
           {syncMode === 'supabase' && syncMessage ? <p className="sync-status">{syncMessage}</p> : null}
@@ -821,6 +860,11 @@ function App() {
                 <button className="secondary-button" type="button" onClick={() => void loadRemoteWorkspace()}>
                   Actualizar
                 </button>
+                {activeWorkspace?.role === 'admin' ? (
+                  <button className="danger-button" type="button" onClick={() => setGroupPendingDelete(activeWorkspace)}>
+                    <Trash2 size={16} /> Eliminar grupo
+                  </button>
+                ) : null}
                 <button className="secondary-button" type="button" onClick={() => void handleSignOut()}>
                   Salir
                 </button>
@@ -834,7 +878,7 @@ function App() {
           <details className="sync-panel sync-panel--mobile" aria-label="Conexion de grupo movil">
             <summary className="mobile-group-summary">
               <span>
-                <strong>{activeWorkspace?.name ?? 'Grupo conectado'}</strong>
+                <strong>{activeWorkspace?.name ?? 'Sin grupo activo'}</strong>
                 <small>{roleLabel(session.role)}</small>
               </span>
               <code translate="no">{inviteCode}</code>
@@ -870,6 +914,11 @@ function App() {
                 <button className="secondary-button" type="button" onClick={() => void loadRemoteWorkspace()}>
                   Actualizar
                 </button>
+                {activeWorkspace?.role === 'admin' ? (
+                  <button className="danger-button" type="button" onClick={() => setGroupPendingDelete(activeWorkspace)}>
+                    <Trash2 size={16} /> Eliminar grupo
+                  </button>
+                ) : null}
                 <button className="secondary-button" type="button" onClick={() => void handleSignOut()}>
                   Salir
                 </button>
@@ -1372,6 +1421,29 @@ function App() {
               </button>
               <button className="danger-button" onClick={() => deleteSong(songPendingDelete.id)}>
                 Eliminar
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {groupPendingDelete ? (
+        <div className="modal-backdrop" role="presentation">
+          <section className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-group-title">
+            <div>
+              <p className="eyebrow">Confirmar borrado</p>
+              <h2 id="delete-group-title">Eliminar grupo</h2>
+            </div>
+            <p>
+              Vas a borrar <strong>{groupPendingDelete.name}</strong>. Tambien se borraran sus canciones, repertorios y
+              accesos compartidos.
+            </p>
+            <div className="toolbar confirm-actions">
+              <button className="secondary-button" onClick={() => setGroupPendingDelete(null)}>
+                Cancelar
+              </button>
+              <button className="danger-button" onClick={() => void handleDeleteWorkspace()}>
+                Eliminar grupo
               </button>
             </div>
           </section>

@@ -140,6 +140,15 @@ export async function createWorkspace(groupName: string): Promise<WorkspaceSessi
   };
 }
 
+export async function deleteWorkspace(groupId: string): Promise<void> {
+  assertSupabase();
+  const user = await getCurrentAuthUser();
+  if (!user) throw new Error('Inicia sesion para eliminar un grupo.');
+
+  const { error } = await supabase!.rpc('delete_group', { target_group_id: groupId });
+  if (error) throw error;
+}
+
 export async function joinWorkspaceByCode(code: string): Promise<WorkspaceSession> {
   assertSupabase();
   const user = await getCurrentAuthUser();

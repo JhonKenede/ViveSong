@@ -228,6 +228,34 @@ begin
 end;
 $$;
 
+create or replace function public.delete_group(target_group_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+begin
+  if current_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  if not exists (
+    select 1
+    from public.group_members gm
+    where gm.group_id = target_group_id
+      and gm.user_id = current_user_id
+      and gm.role = 'admin'
+  ) then
+    raise exception 'Only group admins can delete this group';
+  end if;
+
+  delete from public.groups g
+  where g.id = target_group_id;
+end;
+$$;
+
 alter table public.groups enable row level security;
 alter table public.group_members enable row level security;
 alter table public.songs enable row level security;
@@ -333,5 +361,6 @@ grant usage, select on all sequences in schema public to authenticated;
 grant execute on function public.ensure_default_group(text) to authenticated;
 grant execute on function public.join_group_by_code(text) to authenticated;
 grant execute on function public.create_group(text) to authenticated;
+grant execute on function public.delete_group(uuid) to authenticated;
 grant execute on function public.is_group_member(uuid) to authenticated;
 grant execute on function public.has_group_role(uuid, public.group_role[]) to authenticated;
