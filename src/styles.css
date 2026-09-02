@@ -1358,6 +1358,16 @@ label {
   margin-top: 12px;
 }
 
+.raw-chordpro-editor summary {
+  color: #12392a;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.raw-chordpro-editor[open] summary {
+  margin-bottom: 10px;
+}
+
 .raw-chordpro-editor textarea {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   min-height: 180px;
@@ -1428,6 +1438,15 @@ label {
   z-index: 2;
 }
 
+.chord-chip-editor.is-active {
+  z-index: 3;
+}
+
+.chord-chip-editor.is-active .chord-input {
+  border-color: #1f7a55;
+  box-shadow: 0 0 0 3px rgba(31, 122, 85, 0.12);
+}
+
 .chord-chip-editor .chord-input {
   box-shadow: 0 2px 8px rgba(18, 28, 25, 0.08);
   min-height: 40px;
@@ -1475,6 +1494,19 @@ label {
 .line-actions {
   display: grid;
   gap: 6px;
+}
+
+.chord-position-control {
+  background: #ffffff;
+  border: 1px solid #dbe2de;
+  border-radius: 8px;
+  color: #43504c;
+  gap: 8px;
+  padding: 10px;
+}
+
+.chord-position-control input {
+  accent-color: #1f7a55;
 }
 
 .validation {
@@ -2166,6 +2198,8 @@ label {
   .simple-line,
   .simple-line--section,
   .simple-line--blank {
+    background: #ffffff;
+    border-color: #dbe2de;
     gap: 10px;
     grid-template-columns: 1fr;
     padding: 10px;
@@ -2177,6 +2211,8 @@ label {
   }
 
   .chord-position-lane {
+    background: #f7faf8;
+    border-style: solid;
     display: flex;
     gap: 6px;
     min-height: 46px;
@@ -2205,6 +2241,16 @@ label {
   .simple-line input:not(.chord-input) {
     min-height: 46px;
     width: 100%;
+  }
+
+  .chord-position-control {
+    font-size: 0.82rem;
+    padding: 9px;
+  }
+
+  .chord-position-control input {
+    min-height: 32px;
+    padding: 0;
   }
 
   .line-actions {

@@ -144,11 +144,15 @@ export function SongEditor({ song, onCancel, onSave }: SongEditorProps) {
     lane: HTMLElement,
     laneLength: number,
   ) {
-    setTouched(true);
     const rect = lane.getBoundingClientRect();
     const relative = rect.width > 0 ? (clientX - rect.left) / rect.width : 0;
     const maxPosition = Math.max(1, laneLength);
-    const position = Math.min(maxPosition, Math.max(0, Math.round(relative * maxPosition)));
+    setChordPosition(lineId, chordIndex, Math.round(relative * maxPosition), maxPosition);
+  }
+
+  function setChordPosition(lineId: string, chordIndex: number, nextPosition: number, maxPosition: number) {
+    setTouched(true);
+    const position = Math.min(maxPosition, Math.max(0, Math.round(nextPosition)));
     setLines((current) =>
       current.map((line) => {
         if (line.id !== lineId || line.type !== 'line') return line;
@@ -353,6 +357,9 @@ export function SongEditor({ song, onCancel, onSave }: SongEditorProps) {
                 const chordSlots = getEditableLineChordSlots(line);
                 const visibleChordSlots = chordSlots.length > 0 ? chordSlots : [{ value: '', position: 0 }];
                 const laneLength = getLineLaneLength(line.lyric, visibleChordSlots);
+                const activeChordIndex = selectedChord?.lineId === line.id ? selectedChord.chordIndex : undefined;
+                const activeChord =
+                  activeChordIndex === undefined ? undefined : visibleChordSlots[activeChordIndex];
                 return (
                   <div className="simple-line" key={line.id}>
                     <span className="line-number">{index + 1}</span>
@@ -373,7 +380,11 @@ export function SongEditor({ song, onCancel, onSave }: SongEditorProps) {
                       >
                         {visibleChordSlots.map((slot, chordIndex) => (
                           <div
-                            className="chord-chip-editor"
+                            className={
+                              selectedChord?.lineId === line.id && selectedChord.chordIndex === chordIndex
+                                ? 'chord-chip-editor is-active'
+                                : 'chord-chip-editor'
+                            }
                             key={`${line.id}-${chordIndex}`}
                             style={{ left: `${(Math.min(slot.position, laneLength) / laneLength) * 100}%` }}
                             onPointerDown={(event) => {
@@ -419,6 +430,20 @@ export function SongEditor({ song, onCancel, onSave }: SongEditorProps) {
                         onChange={(event) => updateLine(line.id, { lyric: event.target.value })}
                         placeholder="Escribe la letra aqui"
                       />
+                      {activeChord && activeChordIndex !== undefined ? (
+                        <label className="chord-position-control">
+                          Mover acorde sobre la letra
+                          <input
+                            type="range"
+                            min={0}
+                            max={Math.max(1, laneLength)}
+                            value={Math.min(activeChord.position, Math.max(1, laneLength))}
+                            onChange={(event) =>
+                              setChordPosition(line.id, activeChordIndex, Number(event.target.value), Math.max(1, laneLength))
+                            }
+                          />
+                        </label>
+                      ) : null}
                     </div>
                     <div className="line-actions">
                       <button
@@ -453,18 +478,21 @@ export function SongEditor({ song, onCancel, onSave }: SongEditorProps) {
               })}
             </div>
 
-            <label className="raw-chordpro-editor">
-              Formato ChordPro
-              <textarea
-                aria-label="Contenido ChordPro"
-                value={chordPro}
-                onFocus={() => setActiveLineId(null)}
-                onChange={(event) => {
-                  setTouched(true);
-                  setLines(chordProToEditableLines(event.target.value));
-                }}
-              />
-            </label>
+            <details className="raw-chordpro-editor">
+              <summary>Formato ChordPro avanzado</summary>
+              <label>
+                Contenido ChordPro
+                <textarea
+                  aria-label="Contenido ChordPro"
+                  value={chordPro}
+                  onFocus={() => setActiveLineId(null)}
+                  onChange={(event) => {
+                    setTouched(true);
+                    setLines(chordProToEditableLines(event.target.value));
+                  }}
+                />
+              </label>
+            </details>
           </div>
         </section>
 
