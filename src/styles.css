@@ -283,6 +283,33 @@ main {
   overflow-x: hidden;
 }
 
+.workspace-tabs {
+  align-items: center;
+  background: #f7faf8;
+  border-bottom: 1px solid #dbe2de;
+  display: flex;
+  gap: 8px;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 14px 28px 0;
+}
+
+.workspace-tab {
+  background: transparent;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  color: #52615c;
+  font-weight: 800;
+  min-height: 42px;
+  padding: 0 12px 10px;
+  white-space: nowrap;
+}
+
+.workspace-tab.is-active {
+  border-bottom-color: #1f7a55;
+  color: #12392a;
+}
+
 .workspace,
 .editor-shell {
   display: grid;
@@ -1217,6 +1244,10 @@ label {
   .workspace,
   .editor-shell {
     padding: 12px;
+  }
+
+  .workspace-tabs {
+    padding: 10px 12px 0;
   }
 
   .workspace-header,

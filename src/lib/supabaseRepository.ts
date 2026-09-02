@@ -5,6 +5,10 @@ export interface WorkspaceSession extends UserSession {
   inviteCode: string;
 }
 
+export interface WorkspaceSummary extends WorkspaceSession {
+  name: string;
+}
+
 interface SongRow {
   id: string;
   group_id: string;
@@ -41,6 +45,20 @@ interface SetlistSongRow {
   position: number;
   performance_key: MusicalKey | null;
   notes: string | null;
+}
+
+interface MembershipRow {
+  group_id: string;
+  role: GroupRole;
+  groups:
+    | {
+        name: string;
+        invite_code: string;
+      }
+    | Array<{
+        name: string;
+        invite_code: string;
+      }>;
 }
 
 export async function getCurrentAuthUser() {
@@ -120,6 +138,31 @@ export async function joinWorkspaceByCode(code: string): Promise<WorkspaceSessio
     role: workspace.role,
     inviteCode: workspace.invite_code,
   };
+}
+
+export async function listUserWorkspaces(): Promise<WorkspaceSummary[]> {
+  assertSupabase();
+  const user = await getCurrentAuthUser();
+  if (!user) throw new Error('Inicia sesion para ver tus grupos.');
+
+  const { data, error } = await supabase!
+    .from('group_members')
+    .select('group_id, role, groups(name, invite_code)')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+
+  return ((data ?? []) as MembershipRow[]).map((membership) => {
+    const group = Array.isArray(membership.groups) ? membership.groups[0] : membership.groups;
+    return {
+      userId: user.id,
+      groupId: membership.group_id,
+      role: membership.role,
+      name: group?.name ?? 'Grupo',
+      inviteCode: group?.invite_code ?? '',
+    };
+  });
 }
 
 export async function fetchWorkspaceData(groupId: string): Promise<{ songs: Song[]; setlists: Setlist[] }> {

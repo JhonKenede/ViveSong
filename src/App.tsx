@@ -54,12 +54,14 @@ import {
   fetchWorkspaceData,
   hasStoredAuthSession,
   joinWorkspaceByCode,
+  listUserWorkspaces,
   signInWithPassword,
   signOut,
   signUpWithPassword,
   upsertSetlist,
   upsertSong,
   type WorkspaceSession,
+  type WorkspaceSummary,
 } from './lib/supabaseRepository';
 import type { GroupRole, Setlist, Song, ViewMode } from './types';
 
@@ -106,7 +108,9 @@ function App() {
   const [syncMessage, setSyncMessage] = useState('');
   const [authBootstrapping, setAuthBootstrapping] = useState(isSupabaseConfigured);
   const [authSubmitting, setAuthSubmitting] = useState<AuthAction | null>(null);
-  const [authForm, setAuthForm] = useState({ email: '', password: '', inviteCode: '' });
+  const [authForm, setAuthForm] = useState({ email: '', password: '' });
+  const [joinGroupCode, setJoinGroupCode] = useState('');
+  const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   const [inviteCode, setInviteCode] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -127,10 +131,16 @@ function App() {
     setAuthBootstrapping(false);
   }, []);
 
+  const refreshWorkspaces = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    setWorkspaces(await listUserWorkspaces());
+  }, []);
+
   const loadDefaultWorkspace = useCallback(async (message: string) => {
     const workspace = await ensureWorkspace('ViveSong');
     await activateRemoteWorkspace(workspace, message);
-  }, [activateRemoteWorkspace]);
+    await refreshWorkspaces();
+  }, [activateRemoteWorkspace, refreshWorkspaces]);
 
   const loadRemoteWorkspace = useCallback(async () => {
     if (!isSupabaseConfigured) return;
@@ -169,13 +179,35 @@ function App() {
   }
 
   async function openRemoteWorkspaceAfterAuth(message: string) {
-    const code = authForm.inviteCode.trim();
-    if (code) {
-      await activateRemoteWorkspace(await joinWorkspaceByCode(code), message);
-    } else {
-      await loadDefaultWorkspace(message);
-    }
+    await loadDefaultWorkspace(message);
     setActiveView('library');
+  }
+
+  async function switchWorkspace(workspace: WorkspaceSummary) {
+    try {
+      await activateRemoteWorkspace(workspace, `Grupo activo: ${workspace.name}.`);
+      setActiveView('library');
+    } catch (error) {
+      setSyncMessage(getFriendlyBackendError(error));
+    }
+  }
+
+  async function handleJoinWorkspace() {
+    const code = joinGroupCode.trim();
+    if (!code) {
+      setSyncMessage('Escribe el codigo del grupo para unirte.');
+      return;
+    }
+
+    try {
+      const workspace = await joinWorkspaceByCode(code);
+      await activateRemoteWorkspace(workspace, 'Te uniste al grupo.');
+      await refreshWorkspaces();
+      setJoinGroupCode('');
+      setActiveView('library');
+    } catch (error) {
+      setSyncMessage(getFriendlyAuthError(error, 'No se pudo unir al grupo.'));
+    }
   }
 
   function getErrorMessage(error: unknown) {
@@ -265,6 +297,7 @@ function App() {
   const artists = [...new Set(visibleSongs.map((song) => song.artist))].sort();
   const tags = [...new Set(visibleSongs.flatMap((song) => song.tags))].sort();
   const filteredSongs = useMemo(() => filterSongs(visibleSongs, filters), [visibleSongs, filters]);
+  const activeWorkspace = workspaces.find((workspace) => workspace.groupId === session.groupId);
 
   async function persistSong(song: Song) {
     if (syncMode !== 'supabase') return;
@@ -324,6 +357,8 @@ function App() {
       await signOut();
       setSyncMode('local');
       setInviteCode('');
+      setJoinGroupCode('');
+      setWorkspaces([]);
       setSession(defaultSession);
       setSongs(loadSongs());
       setSetlists(loadSetlists());
@@ -599,10 +634,10 @@ function App() {
               <span>Repertorios en vivo</span>
             </div>
           </div>
-          <div className="auth-copy">
-            <p className="eyebrow">Acceso al grupo</p>
-            <h1 id="auth-title">Inicia sesion para continuar</h1>
-            <p>Entra con tu cuenta y, si te han invitado, pega el codigo del grupo antes de acceder.</p>
+            <div className="auth-copy">
+              <p className="eyebrow">Acceso al grupo</p>
+              <h1 id="auth-title">Inicia sesion para continuar</h1>
+            <p>Entra con tu cuenta. Despues podras crear tu espacio o unirte al grupo que te hayan compartido.</p>
           </div>
 
           {syncMessage ? (
@@ -643,15 +678,6 @@ function App() {
                 value={authForm.password}
                 onChange={(event) => setAuthForm((current) => ({ ...current, password: event.target.value }))}
                 placeholder="Minimo 6 caracteres"
-              />
-            </label>
-            <label>
-              Codigo de grupo
-              <input
-                autoComplete="off"
-                value={authForm.inviteCode}
-                onChange={(event) => setAuthForm((current) => ({ ...current, inviteCode: event.target.value }))}
-                placeholder="Opcional"
               />
             </label>
             <div className="auth-actions">
@@ -712,7 +738,7 @@ function App() {
         )}
         <section className="sync-panel" aria-label="Conexion de grupo">
           <div>
-            <strong>{syncMode === 'supabase' ? 'Grupo conectado' : 'Modo local'}</strong>
+            <strong>{syncMode === 'supabase' ? activeWorkspace?.name ?? 'Grupo conectado' : 'Modo local'}</strong>
             <span>{syncMode === 'supabase' ? `Rol: ${roleLabel(session.role)}` : syncMessage || 'Datos guardados en este equipo.'}</span>
           </div>
           {isSupabaseConfigured ? (
@@ -722,6 +748,18 @@ function App() {
                   Codigo del grupo
                   <input readOnly value={inviteCode} />
                 </label>
+                <label>
+                  Unirme a otro grupo
+                  <input
+                    autoComplete="off"
+                    value={joinGroupCode}
+                    onChange={(event) => setJoinGroupCode(event.target.value)}
+                    placeholder="Codigo del admin"
+                  />
+                </label>
+                <button className="secondary-button" type="button" onClick={() => void handleJoinWorkspace()}>
+                  Unirme
+                </button>
                 <button className="secondary-button" type="button" onClick={() => void loadRemoteWorkspace()}>
                   Actualizar
                 </button>
@@ -741,11 +779,25 @@ function App() {
       </aside>
 
       <main>
+        {syncMode === 'supabase' && workspaces.length > 0 ? (
+          <div className="workspace-tabs" aria-label="Grupos">
+            {workspaces.map((workspace) => (
+              <button
+                className={workspace.groupId === session.groupId ? 'workspace-tab is-active' : 'workspace-tab'}
+                key={workspace.groupId}
+                type="button"
+                onClick={() => void switchWorkspace(workspace)}
+              >
+                {workspace.name}
+              </button>
+            ))}
+          </div>
+        ) : null}
         {activeView === 'library' ? (
           <section className="workspace">
             <div className="workspace-header">
               <div>
-                <p className="eyebrow">Biblioteca</p>
+                <p className="eyebrow">{activeWorkspace?.name ?? 'Biblioteca'}</p>
                 <h1>Selecciona una cancion</h1>
               </div>
               <div className="toolbar">
