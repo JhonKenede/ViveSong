@@ -2141,14 +2141,82 @@ label {
     flex-direction: column;
   }
 
+  .simple-editor-header {
+    gap: 12px;
+    margin: -14px -14px 0;
+    padding: 14px;
+    top: -14px;
+  }
+
+  .simple-editor-header .toolbar {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .simple-editor-header .toolbar .secondary-button {
+    font-size: 0.86rem;
+    gap: 6px;
+    min-width: 0;
+    padding: 0 8px;
+    width: 100%;
+  }
+
   .simple-line,
   .simple-line--section,
   .simple-line--blank {
+    gap: 10px;
     grid-template-columns: 1fr;
+    padding: 10px;
+  }
+
+  .lyric-position-editor {
+    gap: 8px;
+    width: 100%;
+  }
+
+  .chord-position-lane {
+    display: flex;
+    gap: 6px;
+    min-height: 46px;
+    overflow-x: auto;
+    padding: 5px;
+    touch-action: pan-x;
+  }
+
+  .chord-chip-editor {
+    flex: 0 0 auto;
+    max-width: none;
+    position: static;
+    transform: none;
+  }
+
+  .chord-chip-editor .chord-input {
+    min-height: 36px;
+    width: 64px;
+  }
+
+  .chord-remove-button {
+    min-height: 36px;
+    width: 30px;
+  }
+
+  .simple-line input:not(.chord-input) {
+    min-height: 46px;
+    width: 100%;
   }
 
   .line-actions {
     display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .line-actions .mini-icon-button,
+  .line-actions .icon-button {
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .line-number {

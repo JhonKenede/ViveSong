@@ -389,6 +389,7 @@ export function SongEditor({ song, onCancel, onSave }: SongEditorProps) {
                             <input
                               aria-label={`Acorde ${chordIndex + 1} linea ${index + 1}`}
                               className="chord-input"
+                              translate="no"
                               value={slot.value}
                               onChange={(event) => updateLineChord(line.id, chordIndex, event.target.value)}
                               onFocus={() => {
@@ -436,7 +437,7 @@ export function SongEditor({ song, onCancel, onSave }: SongEditorProps) {
                         aria-label={`Agregar letra despues de linea ${index + 1}`}
                         title="Agregar letra debajo"
                       >
-                        <span className="button-symbol">Aa</span>
+                        <Plus size={14} />
                       </button>
                       <button
                         className="icon-button danger"
