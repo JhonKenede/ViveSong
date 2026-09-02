@@ -50,6 +50,13 @@ export async function getCurrentAuthUser() {
   return data.user;
 }
 
+export async function hasStoredAuthSession() {
+  if (!supabase) return false;
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  return Boolean(data.session);
+}
+
 export async function signInWithPassword(email: string, password: string) {
   assertSupabase();
   const { error } = await supabase!.auth.signInWithPassword({ email, password });

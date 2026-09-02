@@ -52,6 +52,7 @@ import {
   deleteSongRemote,
   ensureWorkspace,
   fetchWorkspaceData,
+  hasStoredAuthSession,
   joinWorkspaceByCode,
   signInWithPassword,
   signOut,
@@ -126,8 +127,14 @@ function App() {
 
   const loadRemoteWorkspace = useCallback(async () => {
     if (!isSupabaseConfigured) return;
-    setSyncMessage('Conectando con Supabase...');
     try {
+      const hasSession = await hasStoredAuthSession();
+      if (!hasSession) {
+        setSyncMessage('');
+        return;
+      }
+
+      setSyncMessage('Conectando con Supabase...');
       const workspace = await ensureWorkspace('ViveSong');
       await activateRemoteWorkspace(workspace, 'Conectado a Supabase.');
     } catch (error) {
