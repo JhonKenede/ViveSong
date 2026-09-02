@@ -125,6 +125,12 @@ function App() {
     setSyncMessage(message);
   }, []);
 
+  const loadDefaultWorkspace = useCallback(async (message: string) => {
+    setSyncMessage('Conectando con Supabase...');
+    const workspace = await ensureWorkspace('ViveSong');
+    await activateRemoteWorkspace(workspace, message);
+  }, [activateRemoteWorkspace]);
+
   const loadRemoteWorkspace = useCallback(async () => {
     if (!isSupabaseConfigured) return;
     try {
@@ -134,15 +140,13 @@ function App() {
         return;
       }
 
-      setSyncMessage('Conectando con Supabase...');
-      const workspace = await ensureWorkspace('ViveSong');
-      await activateRemoteWorkspace(workspace, 'Conectado a Supabase.');
+      await loadDefaultWorkspace('Conectado a Supabase.');
     } catch (error) {
       setSyncMode('local');
       const message = getFriendlyBackendError(error);
       setSyncMessage(message.includes('Inicia sesion') ? '' : message);
     }
-  }, [activateRemoteWorkspace]);
+  }, [loadDefaultWorkspace]);
 
   function getAuthCredentials() {
     const email = authForm.email.trim();
@@ -166,8 +170,9 @@ function App() {
     if (code) {
       await activateRemoteWorkspace(await joinWorkspaceByCode(code), message);
     } else {
-      await loadRemoteWorkspace();
+      await loadDefaultWorkspace(message);
     }
+    setActiveView('library');
   }
 
   function getErrorMessage(error: unknown) {
