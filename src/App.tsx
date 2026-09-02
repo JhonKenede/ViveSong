@@ -78,6 +78,7 @@ const navItems: Array<{ view: Exclude<ViewMode, 'song'>; label: string; icon: ty
 const musicalKeys = CHROMATIC_KEYS;
 
 type SyncMode = 'local' | 'supabase';
+type AuthAction = 'signIn' | 'signUp';
 
 function App() {
   const [songs, setSongs] = useState<Song[]>(() => loadSongs());
@@ -102,6 +103,7 @@ function App() {
   const [pastedSongText, setPastedSongText] = useState('');
   const [syncMode, setSyncMode] = useState<SyncMode>('local');
   const [syncMessage, setSyncMessage] = useState('');
+  const [authSubmitting, setAuthSubmitting] = useState<AuthAction | null>(null);
   const [authForm, setAuthForm] = useState({ email: '', password: '', inviteCode: '' });
   const [inviteCode, setInviteCode] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -134,6 +136,23 @@ function App() {
       setSyncMessage(message.includes('Inicia sesion') ? '' : message);
     }
   }, [activateRemoteWorkspace]);
+
+  function getAuthCredentials() {
+    const email = authForm.email.trim();
+    const password = authForm.password;
+
+    if (!email || !password) {
+      setSyncMessage('Escribe tu correo electronico y una contrasena para continuar.');
+      return null;
+    }
+
+    if (password.length < 6) {
+      setSyncMessage('La contrasena debe tener al menos 6 caracteres.');
+      return null;
+    }
+
+    return { email, password };
+  }
 
   useEffect(() => {
     void loadRemoteWorkspace();
@@ -188,8 +207,11 @@ function App() {
   }
 
   async function handleSignIn() {
+    const credentials = getAuthCredentials();
+    if (!credentials) return;
+    setAuthSubmitting('signIn');
     try {
-      await signInWithPassword(authForm.email, authForm.password);
+      await signInWithPassword(credentials.email, credentials.password);
       const code = authForm.inviteCode.trim();
       if (code) {
         await activateRemoteWorkspace(await joinWorkspaceByCode(code), 'Te uniste al grupo.');
@@ -198,13 +220,18 @@ function App() {
       }
     } catch (error) {
       setSyncMessage(error instanceof Error ? error.message : 'No se pudo iniciar sesion.');
+    } finally {
+      setAuthSubmitting(null);
     }
   }
 
   async function handleSignUp() {
+    const credentials = getAuthCredentials();
+    if (!credentials) return;
+    setAuthSubmitting('signUp');
     try {
-      await signUpWithPassword(authForm.email, authForm.password);
-      await signInWithPassword(authForm.email, authForm.password);
+      await signUpWithPassword(credentials.email, credentials.password);
+      await signInWithPassword(credentials.email, credentials.password);
       const code = authForm.inviteCode.trim();
       if (code) {
         await activateRemoteWorkspace(await joinWorkspaceByCode(code), 'Cuenta creada y unida al grupo.');
@@ -213,6 +240,8 @@ function App() {
       }
     } catch (error) {
       setSyncMessage(error instanceof Error ? error.message : 'No se pudo crear la cuenta.');
+    } finally {
+      setAuthSubmitting(null);
     }
   }
 
@@ -528,11 +557,11 @@ function App() {
               />
             </label>
             <div className="auth-actions">
-              <button className="primary-button" type="submit">
-                <LogIn size={18} /> Entrar
+              <button className="primary-button" disabled={authSubmitting !== null} type="submit">
+                <LogIn size={18} /> {authSubmitting === 'signIn' ? 'Entrando...' : 'Entrar'}
               </button>
-              <button className="secondary-button" type="button" onClick={() => void handleSignUp()}>
-                Crear cuenta
+              <button className="secondary-button" disabled={authSubmitting !== null} type="button" onClick={() => void handleSignUp()}>
+                {authSubmitting === 'signUp' ? 'Creando...' : 'Crear cuenta'}
               </button>
             </div>
           </form>
