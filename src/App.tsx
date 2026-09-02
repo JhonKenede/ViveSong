@@ -154,6 +154,38 @@ function App() {
     return { email, password };
   }
 
+  async function openRemoteWorkspaceAfterAuth(message: string) {
+    const code = authForm.inviteCode.trim();
+    if (code) {
+      await activateRemoteWorkspace(await joinWorkspaceByCode(code), message);
+    } else {
+      await loadRemoteWorkspace();
+    }
+  }
+
+  function getFriendlyAuthError(error: unknown, fallback: string) {
+    if (!(error instanceof Error)) return fallback;
+    const message = error.message.toLowerCase();
+
+    if (message.includes('email not confirmed')) {
+      return 'La cuenta se ha creado, pero Supabase pide confirmar el correo antes de entrar. Revisa tu email y despues pulsa Entrar.';
+    }
+
+    if (message.includes('invalid') && message.includes('email')) {
+      return 'Ese correo no parece valido. Usa un correo real, por ejemplo Gmail, Outlook o el tuyo habitual.';
+    }
+
+    if (message.includes('anonymous')) {
+      return 'Escribe correo y contrasena antes de crear la cuenta.';
+    }
+
+    if (message.includes('invalid login credentials')) {
+      return 'Correo o contrasena incorrectos.';
+    }
+
+    return error.message;
+  }
+
   useEffect(() => {
     void loadRemoteWorkspace();
   }, [loadRemoteWorkspace]);
@@ -212,14 +244,9 @@ function App() {
     setAuthSubmitting('signIn');
     try {
       await signInWithPassword(credentials.email, credentials.password);
-      const code = authForm.inviteCode.trim();
-      if (code) {
-        await activateRemoteWorkspace(await joinWorkspaceByCode(code), 'Te uniste al grupo.');
-      } else {
-        await loadRemoteWorkspace();
-      }
+      await openRemoteWorkspaceAfterAuth('Te uniste al grupo.');
     } catch (error) {
-      setSyncMessage(error instanceof Error ? error.message : 'No se pudo iniciar sesion.');
+      setSyncMessage(getFriendlyAuthError(error, 'No se pudo iniciar sesion.'));
     } finally {
       setAuthSubmitting(null);
     }
@@ -230,16 +257,15 @@ function App() {
     if (!credentials) return;
     setAuthSubmitting('signUp');
     try {
-      await signUpWithPassword(credentials.email, credentials.password);
-      await signInWithPassword(credentials.email, credentials.password);
-      const code = authForm.inviteCode.trim();
-      if (code) {
-        await activateRemoteWorkspace(await joinWorkspaceByCode(code), 'Cuenta creada y unida al grupo.');
-      } else {
-        await loadRemoteWorkspace();
+      const signUpData = await signUpWithPassword(credentials.email, credentials.password);
+      if (!signUpData.session) {
+        setSyncMessage('Cuenta creada. Revisa tu correo para confirmarla y despues pulsa Entrar.');
+        return;
       }
+
+      await openRemoteWorkspaceAfterAuth('Cuenta creada y conectada.');
     } catch (error) {
-      setSyncMessage(error instanceof Error ? error.message : 'No se pudo crear la cuenta.');
+      setSyncMessage(getFriendlyAuthError(error, 'No se pudo crear la cuenta.'));
     } finally {
       setAuthSubmitting(null);
     }

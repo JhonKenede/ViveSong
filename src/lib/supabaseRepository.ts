@@ -58,8 +58,13 @@ export async function signInWithPassword(email: string, password: string) {
 
 export async function signUpWithPassword(email: string, password: string) {
   assertSupabase();
-  const { error } = await supabase!.auth.signUp({ email, password });
+  const { data, error } = await supabase!.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: window.location.origin },
+  });
   if (error) throw error;
+  return data;
 }
 
 export async function signOut() {
