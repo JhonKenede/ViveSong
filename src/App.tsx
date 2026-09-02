@@ -260,7 +260,7 @@ function App() {
       setSelectedSongId('');
       setSelectedSetlistId('');
       setSyncMode('supabase');
-      setSyncMessage('Grupo eliminado. Crea un grupo o unete a uno para compartir canciones.');
+      setSyncMessage('Grupo archivado. Crea un grupo o unete a uno para compartir canciones.');
       setActiveView('library');
     } catch (error) {
       setGroupPendingDelete(null);
@@ -333,8 +333,8 @@ function App() {
   }, [loadRemoteWorkspace]);
 
   const visibleSongs = useMemo(
-    () => songs.filter((song) => canReadGroupResource(session, song.groupId) && !song.archivedAt),
-    [songs, session],
+    () => songs.filter((song) => (syncMode === 'supabase' || canReadGroupResource(session, song.groupId)) && !song.archivedAt),
+    [songs, session, syncMode],
   );
   const visibleSetlists = useMemo(
     () => setlists.filter((setlist) => canReadGroupResource(session, setlist.groupId)),
@@ -1435,8 +1435,8 @@ function App() {
               <h2 id="delete-group-title">Eliminar grupo</h2>
             </div>
             <p>
-              Vas a borrar <strong>{groupPendingDelete.name}</strong>. Tambien se borraran sus canciones, repertorios y
-              accesos compartidos.
+              Vas a quitar <strong>{groupPendingDelete.name}</strong> de la app. Sus canciones y repertorios se conservaran
+              en Supabase.
             </p>
             <div className="toolbar confirm-actions">
               <button className="secondary-button" onClick={() => setGroupPendingDelete(null)}>

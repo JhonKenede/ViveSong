@@ -1,3 +1,6 @@
+alter table public.groups
+add column if not exists archived_at timestamptz;
+
 create or replace function public.delete_group(target_group_id uuid)
 returns void
 language plpgsql
@@ -21,7 +24,8 @@ begin
     raise exception 'Only group admins can delete this group';
   end if;
 
-  delete from public.groups g
+  update public.groups g
+  set archived_at = coalesce(g.archived_at, now())
   where g.id = target_group_id;
 end;
 $$;

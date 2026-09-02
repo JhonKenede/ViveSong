@@ -54,10 +54,12 @@ interface MembershipRow {
     | {
         name: string;
         invite_code: string;
+        archived_at: string | null;
       }
     | Array<{
         name: string;
         invite_code: string;
+        archived_at: string | null;
       }>;
 }
 
@@ -172,28 +174,32 @@ export async function listUserWorkspaces(): Promise<WorkspaceSummary[]> {
 
   const { data, error } = await supabase!
     .from('group_members')
-    .select('group_id, role, groups(name, invite_code)')
+    .select('group_id, role, groups(name, invite_code, archived_at)')
     .eq('user_id', user.id)
     .order('created_at', { ascending: true });
 
   if (error) throw error;
 
-  return ((data ?? []) as MembershipRow[]).map((membership) => {
+  return ((data ?? []) as MembershipRow[]).flatMap((membership) => {
     const group = Array.isArray(membership.groups) ? membership.groups[0] : membership.groups;
-    return {
-      userId: user.id,
-      groupId: membership.group_id,
-      role: membership.role,
-      name: group?.name ?? 'Grupo',
-      inviteCode: group?.invite_code ?? '',
-    };
+    if (!group || group.archived_at) return [];
+
+    return [
+      {
+        userId: user.id,
+        groupId: membership.group_id,
+        role: membership.role,
+        name: group.name ?? 'Grupo',
+        inviteCode: group.invite_code ?? '',
+      },
+    ];
   });
 }
 
 export async function fetchWorkspaceData(groupId: string): Promise<{ songs: Song[]; setlists: Setlist[] }> {
   assertSupabase();
   const [songsResult, setlistsResult] = await Promise.all([
-    supabase!.from('songs').select('*').eq('group_id', groupId).order('updated_at', { ascending: false }),
+    supabase!.from('songs').select('*').order('updated_at', { ascending: false }),
     supabase!
       .from('setlists')
       .select('*, setlist_songs(song_id, position, performance_key, notes)')

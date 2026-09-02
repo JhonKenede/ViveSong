@@ -12,7 +12,8 @@ create table if not exists public.groups (
   invite_code text not null unique default upper(substr(encode(gen_random_bytes(8), 'hex'), 1, 8)),
   owner_id uuid not null references auth.users(id) on delete cascade,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  archived_at timestamptz
 );
 
 create table if not exists public.group_members (
@@ -140,6 +141,7 @@ begin
   from public.group_members gm
   join public.groups g on g.id = gm.group_id
   where gm.user_id = current_user_id
+    and g.archived_at is null
   order by gm.created_at asc
   limit 1;
 
@@ -175,7 +177,8 @@ begin
 
   select g.id into target_group_id
   from public.groups g
-  where upper(g.invite_code) = upper(trim(code));
+  where upper(g.invite_code) = upper(trim(code))
+    and g.archived_at is null;
 
   if target_group_id is null then
     raise exception 'Invalid invite code';
@@ -251,7 +254,8 @@ begin
     raise exception 'Only group admins can delete this group';
   end if;
 
-  delete from public.groups g
+  update public.groups g
+  set archived_at = coalesce(g.archived_at, now())
   where g.id = target_group_id;
 end;
 $$;
@@ -282,7 +286,7 @@ with check (public.has_group_role(group_id, array['admin']::public.group_role[])
 
 drop policy if exists "members can read songs" on public.songs;
 create policy "members can read songs" on public.songs
-for select using (public.is_group_member(group_id));
+for select using (auth.uid() is not null);
 
 drop policy if exists "editors can insert songs" on public.songs;
 create policy "editors can insert songs" on public.songs
@@ -342,9 +346,13 @@ for all using (
 with check (
   exists (
     select 1 from public.setlists s
-    join public.songs so on so.id = setlist_songs.song_id and so.group_id = s.group_id
     where s.id = setlist_songs.setlist_id
       and public.has_group_role(s.group_id, array['admin','editor']::public.group_role[])
+      and exists (
+        select 1
+        from public.songs so
+        where so.id = setlist_songs.song_id
+      )
   )
 );
 
