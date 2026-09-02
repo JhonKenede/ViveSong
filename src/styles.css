@@ -272,6 +272,59 @@ nav {
   width: 100%;
 }
 
+.sync-panel--mobile {
+  display: none;
+}
+
+.mobile-group-summary {
+  align-items: center;
+  cursor: pointer;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  list-style: none;
+}
+
+.mobile-group-summary::-webkit-details-marker {
+  display: none;
+}
+
+.mobile-group-summary span,
+.mobile-group-summary small {
+  display: block;
+  min-width: 0;
+}
+
+.mobile-group-summary small {
+  color: #a9b7b0;
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+
+.mobile-group-summary code {
+  background: #eaf7f0;
+  border: 1px solid #cfe5d8;
+  border-radius: 999px;
+  color: #12392a;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 6px 9px;
+  white-space: nowrap;
+}
+
+.mobile-group-body {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+}
+
+.mobile-group-actions {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
 .sync-actions {
   display: grid;
   gap: 8px;
@@ -1250,6 +1303,10 @@ label {
     padding: 10px 12px 0;
   }
 
+  .app-shell {
+    min-height: 100dvh;
+  }
+
   .workspace-header,
   .panel-header,
   .detail-header,
@@ -1260,8 +1317,53 @@ label {
     flex-direction: column;
   }
 
+  .sidebar {
+    gap: 14px;
+    padding: 16px 18px 12px;
+  }
+
+  .brand {
+    gap: 10px;
+  }
+
+  .brand-mark {
+    height: 44px;
+    width: 44px;
+  }
+
   .brand span {
     display: none;
+  }
+
+  nav {
+    display: grid;
+    gap: 6px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow: visible;
+  }
+
+  .nav-button {
+    flex-direction: column;
+    font-size: 0.74rem;
+    gap: 4px;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 0;
+    padding: 8px 4px;
+    text-align: center;
+  }
+
+  .sync-panel--desktop {
+    display: none;
+  }
+
+  .sync-panel--mobile {
+    display: block;
+    padding: 12px;
+  }
+
+  .mobile-group-actions {
+    grid-template-columns: 1fr;
   }
 
   .song-detail {

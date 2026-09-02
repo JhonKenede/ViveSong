@@ -736,7 +736,7 @@ function App() {
             </select>
           </label>
         )}
-        <section className="sync-panel" aria-label="Conexion de grupo">
+        <section className="sync-panel sync-panel--desktop" aria-label="Conexion de grupo">
           <div>
             <strong>{syncMode === 'supabase' ? activeWorkspace?.name ?? 'Grupo conectado' : 'Modo local'}</strong>
             <span>{syncMode === 'supabase' ? `Rol: ${roleLabel(session.role)}` : syncMessage || 'Datos guardados en este equipo.'}</span>
@@ -772,6 +772,39 @@ function App() {
             <span>Configura `.env.local` para conectar Supabase.</span>
           )}
         </section>
+        {syncMode === 'supabase' ? (
+          <details className="sync-panel sync-panel--mobile" aria-label="Conexion de grupo movil">
+            <summary className="mobile-group-summary">
+              <span>
+                <strong>{activeWorkspace?.name ?? 'Grupo conectado'}</strong>
+                <small>{roleLabel(session.role)}</small>
+              </span>
+              <code translate="no">{inviteCode}</code>
+            </summary>
+            <div className="mobile-group-body">
+              <label>
+                Unirme a otro grupo
+                <input
+                  autoComplete="off"
+                  value={joinGroupCode}
+                  onChange={(event) => setJoinGroupCode(event.target.value)}
+                  placeholder="Codigo del admin"
+                />
+              </label>
+              <div className="mobile-group-actions">
+                <button className="secondary-button" type="button" onClick={() => void handleJoinWorkspace()}>
+                  Unirme
+                </button>
+                <button className="secondary-button" type="button" onClick={() => void loadRemoteWorkspace()}>
+                  Actualizar
+                </button>
+                <button className="secondary-button" type="button" onClick={() => void handleSignOut()}>
+                  Salir
+                </button>
+              </div>
+            </div>
+          </details>
+        ) : null}
         <div className="sidebar-summary">
           <span>{visibleSongs.length} canciones</span>
           <span>{visibleSetlists.length} repertorios</span>
