@@ -1742,6 +1742,7 @@ label {
   }
 
   .app-shell {
+    display: block;
     min-height: 100dvh;
   }
 
@@ -1756,8 +1757,14 @@ label {
   }
 
   .sidebar {
+    align-self: start;
     gap: 8px;
+    justify-content: flex-start;
+    min-height: 0;
     padding: 10px 12px 8px;
+    position: sticky;
+    top: 0;
+    z-index: 20;
   }
 
   .brand {
