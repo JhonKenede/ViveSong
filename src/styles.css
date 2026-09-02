@@ -455,6 +455,10 @@ main {
   width: 100%;
 }
 
+.editor-shell--song-form {
+  align-content: start;
+}
+
 .workspace-header,
 .panel-header,
 .detail-header,
@@ -1256,6 +1260,14 @@ textarea {
   display: contents;
 }
 
+.editor-header {
+  align-items: flex-start;
+  background: #ffffff;
+  border: 1px solid #dbe2de;
+  border-radius: 8px;
+  padding: 16px;
+}
+
 .lyrics-panel,
 .preview-panel--sticky {
   max-height: calc(100vh - 178px);
@@ -1738,6 +1750,7 @@ label {
 
   .workspace,
   .editor-shell {
+    gap: 14px;
     padding: 12px;
   }
 
@@ -1758,6 +1771,46 @@ label {
   .sidebar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .editor-header {
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .editor-header .toolbar {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: 44px 1fr;
+    width: 100%;
+  }
+
+  .editor-header .toolbar .icon-button {
+    min-width: 44px;
+    width: 44px;
+  }
+
+  .editor-header .toolbar .primary-button {
+    width: 100%;
+  }
+
+  .metadata-grid {
+    gap: 12px;
+    grid-template-columns: 1fr;
+  }
+
+  .metadata-grid > label:has(.notes-input) {
+    grid-column: auto;
+  }
+
+  .metadata-grid .field-row {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 1fr;
+  }
+
+  .notes-input {
+    min-height: 96px;
   }
 
   .sidebar {

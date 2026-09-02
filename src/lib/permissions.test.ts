@@ -24,4 +24,20 @@ describe('local permissions', () => {
     expect(canEditSong({ ...defaultSession, role: 'musician' }, song)).toBe(false);
     expect(canEditSong({ ...defaultSession, role: 'editor' }, song)).toBe(true);
   });
+
+  it('allows editors to edit shared library songs outside the active group', () => {
+    const song = createSong({
+      groupId: 'shared-library',
+      title: 'Gracia',
+      artist: 'Equipo',
+      key: 'G',
+      tempo: 72,
+      timeSignature: '4/4',
+      tags: [],
+      chordPro: '[G]Gracia',
+      durationSeconds: 180,
+    });
+
+    expect(canEditSong({ ...defaultSession, role: 'editor' }, song)).toBe(true);
+  });
 });

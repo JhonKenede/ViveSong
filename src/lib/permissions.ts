@@ -26,7 +26,7 @@ export function canDeleteSongs(session: UserSession): boolean {
 }
 
 export function canEditSong(session: UserSession, song: Song): boolean {
-  return canManageSongs(session) && canReadGroupResource(session, song.groupId) && !song.archivedAt;
+  return canManageSongs(session) && !song.archivedAt;
 }
 
 export function roleLabel(role: GroupRole): string {

@@ -13,7 +13,6 @@ import {
   LogIn,
   Mic2,
   Moon,
-  Music2,
   Plus,
   Search,
   Trash2,
@@ -75,9 +74,8 @@ interface DuplicatePrompt {
   inputs: SongInput[];
 }
 
-const navItems: Array<{ view: Exclude<ViewMode, 'song' | 'group-song'>; label: string; icon: typeof Library }> = [
+const navItems: Array<{ view: Exclude<ViewMode, 'song' | 'group-song' | 'editor'>; label: string; icon: typeof Library }> = [
   { view: 'library', label: 'Biblioteca', icon: Library },
-  { view: 'editor', label: 'Editor', icon: Music2 },
   { view: 'setlists', label: 'Repertorios', icon: ListMusic },
   { view: 'performance', label: 'Directo', icon: Mic2 },
   { view: 'groups', label: 'Grupos', icon: UsersRound },

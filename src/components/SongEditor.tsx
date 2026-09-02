@@ -201,8 +201,8 @@ export function SongEditor({ song, onCancel, onSave }: SongEditorProps) {
   }
 
   return (
-    <form className="editor-shell" onSubmit={handleSubmit}>
-      <div className="panel-header">
+    <form className="editor-shell editor-shell--song-form" onSubmit={handleSubmit}>
+      <div className="panel-header editor-header">
         <div>
           <p className="eyebrow">{song ? 'Editar cancion' : 'Nueva cancion'}</p>
           <h2>{form.title || 'Cancion sin titulo'}</h2>
@@ -275,7 +275,7 @@ export function SongEditor({ song, onCancel, onSave }: SongEditorProps) {
             />
           </label>
           <label>
-            Duracion estimada
+            Duracion en minutos
             <input
               type="number"
               min="0"
