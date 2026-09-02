@@ -132,7 +132,7 @@ function App() {
       await activateRemoteWorkspace(workspace, 'Conectado a Supabase.');
     } catch (error) {
       setSyncMode('local');
-      const message = error instanceof Error ? error.message : 'No se pudo conectar con Supabase.';
+      const message = getFriendlyBackendError(error);
       setSyncMessage(message.includes('Inicia sesion') ? '' : message);
     }
   }, [activateRemoteWorkspace]);
@@ -185,6 +185,17 @@ function App() {
 
     if (message.includes('invalid login credentials')) {
       return 'Correo o contrasena incorrectos.';
+    }
+
+    return error.message;
+  }
+
+  function getFriendlyBackendError(error: unknown) {
+    if (!(error instanceof Error)) return 'No se pudo conectar con Supabase.';
+    const message = error.message.toLowerCase();
+
+    if (message.includes('ensure_default_group') || message.includes('schema cache') || message.includes('pgrst202')) {
+      return 'Falta instalar la base de datos de ViveSong en Supabase. Ejecuta la migracion SQL desde el SQL Editor.';
     }
 
     return error.message;
