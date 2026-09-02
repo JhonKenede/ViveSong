@@ -249,9 +249,11 @@ function App() {
   const editingSong = visibleSongs.find((song) => song.id === editingSongId);
   const editorSong = editingSong ?? draftSong ?? undefined;
   const selectedSetlist = visibleSetlists.find((setlist) => setlist.id === selectedSetlistId) ?? visibleSetlists[0];
-  const performanceSongs = selectedSetlist?.items
-    .map((item) => visibleSongs.find((song) => song.id === item.songId))
-    .filter(Boolean) as Song[];
+  const performanceSongs = selectedSetlist
+    ? (selectedSetlist.items
+        .map((item) => visibleSongs.find((song) => song.id === item.songId))
+        .filter(Boolean) as Song[])
+    : [];
   const performanceSong = performanceSongs[performanceIndex] ?? visibleSongs[0];
   const performanceItem = selectedSetlist?.items[performanceIndex];
   const performanceKeyOffset =
