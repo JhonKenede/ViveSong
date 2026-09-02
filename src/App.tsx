@@ -163,9 +163,16 @@ function App() {
     }
   }
 
+  function getErrorMessage(error: unknown) {
+    if (error instanceof Error) return error.message;
+    if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') return error.message;
+    return '';
+  }
+
   function getFriendlyAuthError(error: unknown, fallback: string) {
-    if (!(error instanceof Error)) return fallback;
-    const message = error.message.toLowerCase();
+    const rawMessage = getErrorMessage(error);
+    if (!rawMessage) return fallback;
+    const message = rawMessage.toLowerCase();
 
     if (message.includes('email not confirmed')) {
       return 'La cuenta se ha creado, pero Supabase pide confirmar el correo antes de entrar. Revisa tu email y despues pulsa Entrar.';
@@ -187,18 +194,23 @@ function App() {
       return 'Correo o contrasena incorrectos.';
     }
 
-    return error.message;
+    return rawMessage;
   }
 
   function getFriendlyBackendError(error: unknown) {
-    if (!(error instanceof Error)) return 'No se pudo conectar con Supabase.';
-    const message = error.message.toLowerCase();
+    const rawMessage = getErrorMessage(error);
+    if (!rawMessage) return 'No se pudo conectar con Supabase.';
+    const message = rawMessage.toLowerCase();
 
     if (message.includes('ensure_default_group') || message.includes('schema cache') || message.includes('pgrst202')) {
       return 'Falta instalar la base de datos de ViveSong en Supabase. Ejecuta la migracion SQL desde el SQL Editor.';
     }
 
-    return error.message;
+    if (message.includes('permission denied') || message.includes('grant select') || message.includes('42501')) {
+      return 'Faltan permisos de lectura/escritura para usuarios autenticados en Supabase. Ejecuta la migracion 002_grant_authenticated_access.sql.';
+    }
+
+    return rawMessage;
   }
 
   useEffect(() => {
