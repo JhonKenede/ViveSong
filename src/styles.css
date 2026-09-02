@@ -581,6 +581,23 @@ h3 {
   gap: 14px;
 }
 
+.group-empty-panel {
+  align-items: start;
+  background: #ffffff;
+  border: 1px solid #dbe2de;
+  border-radius: 8px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 18px;
+}
+
+.group-empty-panel p:not(.eyebrow) {
+  color: #43504c;
+  margin: 8px 0 0;
+  max-width: 52ch;
+}
+
 .group-detail-panel {
   background: #ffffff;
   border: 1px solid #dbe2de;
@@ -1739,26 +1756,17 @@ label {
   }
 
   .sidebar {
-    gap: 14px;
-    padding: 16px 18px 12px;
+    gap: 8px;
+    padding: 10px 12px 8px;
   }
 
   .brand {
-    gap: 10px;
-  }
-
-  .brand-mark {
-    height: 44px;
-    width: 44px;
-  }
-
-  .brand span {
     display: none;
   }
 
   nav {
     display: flex;
-    gap: 6px;
+    gap: 4px;
     overflow-x: auto;
   }
 
@@ -1777,15 +1785,19 @@ label {
   }
 
   .nav-button {
-    flex-direction: column;
-    font-size: 0.68rem;
-    flex: 0 0 74px;
+    flex: 0 0 auto;
+    flex-direction: row;
+    font-size: 0.72rem;
     gap: 4px;
     justify-content: center;
-    min-height: 44px;
+    min-height: 36px;
     min-width: 0;
-    padding: 8px 4px;
+    padding: 0 6px;
     text-align: center;
+  }
+
+  .nav-button svg {
+    display: none;
   }
 
   .sync-panel--desktop {
@@ -1795,6 +1807,11 @@ label {
   .sync-panel--mobile {
     display: block;
     padding: 12px;
+  }
+
+  .page-status {
+    margin: 0;
+    padding: 10px 12px;
   }
 
   .mobile-group-actions {
@@ -1825,6 +1842,89 @@ label {
   .profile-actions .secondary-button,
   .profile-actions .danger-button {
     width: 100%;
+  }
+
+  .group-empty-panel {
+    gap: 12px;
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .group-empty-panel h2,
+  .group-detail-header h2,
+  .group-list-section h2 {
+    font-size: 1.45rem;
+    line-height: 1.12;
+  }
+
+  .group-detail-panel {
+    background: transparent;
+    border: 0;
+    gap: 12px;
+    padding: 0;
+  }
+
+  .group-detail-header,
+  .group-content-grid > section,
+  .group-repertoire-strip,
+  .group-management-panel,
+  .group-card {
+    background: #ffffff;
+    border: 1px solid #dbe2de;
+    border-radius: 8px;
+    padding: 14px;
+  }
+
+  .group-code-box {
+    width: 100%;
+  }
+
+  .group-summary-strip {
+    background: transparent;
+    border: 0;
+    gap: 6px;
+    padding: 0;
+  }
+
+  .group-summary-strip span {
+    font-size: 0.78rem;
+    padding: 5px 8px;
+  }
+
+  .group-content-grid {
+    gap: 12px;
+  }
+
+  .group-content-grid .panel-header,
+  .group-repertoire-strip .panel-header {
+    align-items: flex-start;
+    flex-direction: row;
+    gap: 10px;
+  }
+
+  .group-content-grid .panel-header .secondary-button,
+  .group-repertoire-strip .panel-header .secondary-button {
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 0 10px;
+    width: auto;
+  }
+
+  .group-mini-list button {
+    min-height: 48px;
+    padding: 9px 10px;
+  }
+
+  .group-song-preview {
+    max-height: 300px;
+  }
+
+  .group-management-panel[open] summary {
+    margin-bottom: 12px;
+  }
+
+  .group-card-grid {
+    grid-template-columns: 1fr;
   }
 
   .profile-card--hero,

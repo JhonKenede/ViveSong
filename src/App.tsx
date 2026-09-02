@@ -358,7 +358,7 @@ function App() {
     [setlists, session],
   );
   const selectedSong = visibleSongs.find((song) => song.id === selectedSongId) ?? visibleSongs[0];
-  const selectedGroupSong = visibleSongs.find((song) => song.id === selectedGroupSongId) ?? visibleSongs[0];
+  const selectedGroupSong = selectedGroupSongId ? visibleSongs.find((song) => song.id === selectedGroupSongId) : undefined;
   const renderedSelectedSong = selectedSong ? transposeSong(selectedSong, songReaderSemitones) : undefined;
   const editingSong = visibleSongs.find((song) => song.id === editingSongId);
   const editorSong = editingSong ?? draftSong ?? undefined;
@@ -1086,170 +1086,184 @@ function App() {
 
             {syncMode === 'supabase' && syncMessage ? <p className="page-status">{syncMessage}</p> : null}
 
-            <section className="group-detail-panel">
-              <div className="group-detail-header">
-                <div>
-                  <p className="eyebrow">Grupo activo</p>
-                  <h2>{activeWorkspace?.name ?? 'Sin grupo activo'}</h2>
-                </div>
-                <div className="group-header-actions">
-                  <div className="group-code-box">
-                    <span>Codigo</span>
-                    <strong translate="no">{inviteCode || 'Sin codigo'}</strong>
+            {activeWorkspace ? (
+              <section className="group-detail-panel">
+                <div className="group-detail-header">
+                  <div>
+                    <p className="eyebrow">Grupo activo</p>
+                    <h2>{activeWorkspace.name}</h2>
                   </div>
-                  <button className="secondary-button" type="button" disabled={!inviteCode} onClick={() => void copyInviteCode(inviteCode)}>
-                    <Copy size={17} /> Copiar
-                  </button>
-                  {activeWorkspace?.role === 'admin' ? (
-                    <button className="danger-button" type="button" onClick={() => setGroupPendingDelete(activeWorkspace)}>
-                      <Trash2 size={17} /> Eliminar
+                  <div className="group-header-actions">
+                    <div className="group-code-box">
+                      <span>Codigo</span>
+                      <strong translate="no">{inviteCode || 'Sin codigo'}</strong>
+                    </div>
+                    <button className="secondary-button" type="button" disabled={!inviteCode} onClick={() => void copyInviteCode(inviteCode)}>
+                      <Copy size={17} /> Copiar
                     </button>
-                  ) : null}
+                    {activeWorkspace.role === 'admin' ? (
+                      <button className="danger-button" type="button" onClick={() => setGroupPendingDelete(activeWorkspace)}>
+                        <Trash2 size={17} /> Eliminar
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-              <div className="group-summary-strip">
-                <span>{visibleSongs.length} canciones disponibles</span>
-                <span>{visibleSetlists.length} repertorios del grupo</span>
-                <span>{roleLabel(session.role)}</span>
-              </div>
-              <div className="group-content-grid">
-                <section>
+                <div className="group-summary-strip">
+                  <span>{visibleSongs.length} canciones disponibles</span>
+                  <span>{visibleSetlists.length} repertorios del grupo</span>
+                  <span>{roleLabel(session.role)}</span>
+                </div>
+                <div className="group-content-grid">
+                  <section>
+                    <div className="panel-header">
+                      <div>
+                        <p className="eyebrow">Cancionero</p>
+                        <h3>Canciones disponibles</h3>
+                      </div>
+                      <button className="secondary-button" type="button" onClick={() => setActiveView('library')}>
+                        Biblioteca
+                      </button>
+                    </div>
+                    <div className="group-mini-list">
+                      {visibleSongs.slice(0, 8).map((song) => (
+                        <button
+                          className={selectedGroupSong?.id === song.id ? 'is-active' : ''}
+                          key={song.id}
+                          type="button"
+                          onClick={() => setSelectedGroupSongId(song.id)}
+                        >
+                          <span>
+                            <strong>{song.title}</strong>
+                            <small>{song.artist}</small>
+                          </span>
+                          <span translate="no">{song.key}</span>
+                        </button>
+                      ))}
+                      {visibleSongs.length === 0 ? <p className="empty-state">No hay canciones subidas en la biblioteca.</p> : null}
+                    </div>
+                  </section>
+
+                  <section className="group-song-panel">
+                    {selectedGroupSong ? (
+                      <>
+                        <div className="panel-header">
+                          <div>
+                            <p className="eyebrow">Cancion seleccionada</p>
+                            <h3>{selectedGroupSong.title}</h3>
+                          </div>
+                          <button
+                            className="secondary-button"
+                            type="button"
+                            disabled={!canEditSong(session, selectedGroupSong)}
+                            onClick={() => {
+                              setEditingSongId(selectedGroupSong.id);
+                              setActiveView('editor');
+                            }}
+                          >
+                            Editar
+                          </button>
+                        </div>
+                        <div className="meta-strip">
+                          <span>{selectedGroupSong.artist}</span>
+                          <span translate="no">{selectedGroupSong.key}</span>
+                          <span>{formatDuration(selectedGroupSong.durationSeconds)}</span>
+                        </div>
+                        <div className="group-song-preview">
+                          <ChordPreview source={selectedGroupSong.chordPro} />
+                        </div>
+                      </>
+                    ) : (
+                      <p className="empty-state">Selecciona una cancion para verla dentro del grupo.</p>
+                    )}
+                  </section>
+                </div>
+
+                <section className="group-repertoire-strip">
                   <div className="panel-header">
                     <div>
-                      <p className="eyebrow">Cancionero</p>
-                      <h3>Canciones disponibles</h3>
+                      <p className="eyebrow">Repertorios</p>
+                      <h3>Del grupo activo</h3>
                     </div>
-                    <button className="secondary-button" type="button" onClick={() => setActiveView('library')}>
-                      Biblioteca
+                    <button className="secondary-button" type="button" onClick={() => setActiveView('setlists')}>
+                      Ver repertorios
                     </button>
                   </div>
-                  <div className="group-mini-list">
-                    {visibleSongs.slice(0, 8).map((song) => (
+                  <div className="group-mini-list group-mini-list--inline">
+                    {visibleSetlists.slice(0, 4).map((setlist) => (
                       <button
-                        className={selectedGroupSong?.id === song.id ? 'is-active' : ''}
-                        key={song.id}
+                        key={setlist.id}
                         type="button"
-                        onClick={() => setSelectedGroupSongId(song.id)}
+                        onClick={() => {
+                          setSelectedSetlistId(setlist.id);
+                          setActiveView('setlists');
+                        }}
                       >
                         <span>
-                          <strong>{song.title}</strong>
-                          <small>{song.artist}</small>
+                          <strong>{setlist.name}</strong>
+                          <small>{setlist.date}</small>
                         </span>
-                        <span translate="no">{song.key}</span>
+                        <span>{setlist.items.length}</span>
                       </button>
                     ))}
-                    {visibleSongs.length === 0 ? <p className="empty-state">No hay canciones subidas en la biblioteca.</p> : null}
+                    {visibleSetlists.length === 0 ? <p className="empty-state">Este grupo todavia no tiene repertorios.</p> : null}
                   </div>
                 </section>
-
-                <section className="group-song-panel">
-                  {selectedGroupSong ? (
-                    <>
-                      <div className="panel-header">
-                        <div>
-                          <p className="eyebrow">Cancion seleccionada</p>
-                          <h3>{selectedGroupSong.title}</h3>
-                        </div>
-                        <button
-                          className="secondary-button"
-                          type="button"
-                          disabled={!canEditSong(session, selectedGroupSong)}
-                          onClick={() => {
-                            setEditingSongId(selectedGroupSong.id);
-                            setActiveView('editor');
-                          }}
-                        >
-                          Editar
-                        </button>
-                      </div>
-                      <div className="meta-strip">
-                        <span>{selectedGroupSong.artist}</span>
-                        <span translate="no">{selectedGroupSong.key}</span>
-                        <span>{formatDuration(selectedGroupSong.durationSeconds)}</span>
-                      </div>
-                      <div className="group-song-preview">
-                        <ChordPreview source={selectedGroupSong.chordPro} />
-                      </div>
-                    </>
-                  ) : (
-                    <p className="empty-state">Selecciona una cancion para verla dentro del grupo.</p>
-                  )}
-                </section>
-              </div>
-
-              <section className="group-repertoire-strip">
-                <div className="panel-header">
-                  <div>
-                    <p className="eyebrow">Repertorios</p>
-                    <h3>Del grupo activo</h3>
-                  </div>
-                  <button className="secondary-button" type="button" onClick={() => setActiveView('setlists')}>
-                    Ver repertorios
-                  </button>
+              </section>
+            ) : (
+              <section className="group-empty-panel">
+                <div>
+                  <p className="eyebrow">Sin grupo activo</p>
+                  <h2>Prepara tu espacio compartido</h2>
+                  <p>Crea un grupo para tu equipo o entra con el codigo de otro administrador.</p>
                 </div>
-                <div className="group-mini-list group-mini-list--inline">
-                  {visibleSetlists.slice(0, 4).map((setlist) => (
-                    <button
-                      key={setlist.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedSetlistId(setlist.id);
-                        setActiveView('setlists');
-                      }}
-                    >
-                      <span>
-                        <strong>{setlist.name}</strong>
-                        <small>{setlist.date}</small>
-                      </span>
-                      <span>{setlist.items.length}</span>
-                    </button>
-                  ))}
-                  {visibleSetlists.length === 0 ? <p className="empty-state">Este grupo todavia no tiene repertorios.</p> : null}
+                <div className="group-summary-strip">
+                  <span>{visibleSongs.length} canciones en biblioteca</span>
+                  <span>{workspaces.length} grupos disponibles</span>
                 </div>
               </section>
-            </section>
+            )}
 
-            <details className="group-management-panel">
+            <details className="group-management-panel" open={!activeWorkspace}>
               <summary>Administrar grupos</summary>
               <div className="groups-layout">
-              <section className="form-panel group-form-panel">
-                <div>
-                  <p className="eyebrow">Nuevo grupo</p>
-                  <h2>Crear grupo</h2>
-                </div>
-                <label>
-                  Nombre del grupo
-                  <input
-                    autoComplete="off"
-                    maxLength={80}
-                    value={newGroupName}
-                    onChange={(event) => setNewGroupName(event.target.value)}
-                    placeholder="Vive Worship"
-                  />
-                </label>
-                <button className="primary-button" type="button" onClick={() => void handleCreateWorkspace()}>
-                  <Plus size={18} /> Crear grupo
-                </button>
-              </section>
+                <section className="form-panel group-form-panel">
+                  <div>
+                    <p className="eyebrow">Nuevo grupo</p>
+                    <h2>Crear grupo</h2>
+                  </div>
+                  <label>
+                    Nombre del grupo
+                    <input
+                      autoComplete="off"
+                      maxLength={80}
+                      value={newGroupName}
+                      onChange={(event) => setNewGroupName(event.target.value)}
+                      placeholder="Vive Worship"
+                    />
+                  </label>
+                  <button className="primary-button" type="button" onClick={() => void handleCreateWorkspace()}>
+                    <Plus size={18} /> Crear grupo
+                  </button>
+                </section>
 
-              <section className="form-panel group-form-panel">
-                <div>
-                  <p className="eyebrow">Invitacion</p>
-                  <h2>Unirme a un grupo</h2>
-                </div>
-                <label>
-                  Codigo del administrador
-                  <input
-                    autoComplete="off"
-                    value={joinGroupCode}
-                    onChange={(event) => setJoinGroupCode(event.target.value)}
-                    placeholder="Ej. F889F42F"
-                  />
-                </label>
-                <button className="secondary-button" type="button" onClick={() => void handleJoinWorkspace()}>
-                  Unirme
-                </button>
-              </section>
+                <section className="form-panel group-form-panel">
+                  <div>
+                    <p className="eyebrow">Invitacion</p>
+                    <h2>Unirme a un grupo</h2>
+                  </div>
+                  <label>
+                    Codigo del administrador
+                    <input
+                      autoComplete="off"
+                      value={joinGroupCode}
+                      onChange={(event) => setJoinGroupCode(event.target.value)}
+                      placeholder="Ej. F889F42F"
+                    />
+                  </label>
+                  <button className="secondary-button" type="button" onClick={() => void handleJoinWorkspace()}>
+                    Unirme
+                  </button>
+                </section>
               </div>
             </details>
 
